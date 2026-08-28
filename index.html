@@ -350,7 +350,12 @@ const SUPABASE_URL = 'https://vzwkqvecqpzvfnialanf.supabase.co'; // Replace with
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6d2txdmVjcXB6dmZuaWFsYW5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MjYwMDcsImV4cCI6MjEwMzUwMjAwN30.PyWSfGGd8ubtDVpOZL7Yl5Xim0n87Ug4eL64C3GrbJ8';
 
 // Initialize Supabase
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// NOTE: the Supabase CDN script exposes its library on the global `supabase` object
+// (supabase.createClient). We call that BEFORE reassigning `supabase` to the client
+// instance, otherwise `const supabase = supabase.createClient(...)` throws
+// "Cannot access 'supabase' before initialization" and the whole script dies.
+const supabaseLib = window.supabase;
+const supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 /* ============================= STORAGE HELPERS ============================= */
 /* Chemorbit tries the platform's persistent storage first. If it's unavailable
    or failing (e.g. viewed outside the Claude artifact preview), it falls back
