@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chemorbit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#1E2A22;
@@ -64,15 +65,75 @@
     .orbit-dot{ animation:none !important; offset-distance:0% !important; }
   }
 
-  /* ---- Layout shells ---- */
-  #app{ min-height:100vh; }
-  .auth-wrap{
-    min-height:100vh; display:flex; align-items:center; justify-content:center;
-    padding:32px 20px;
-    background:
-      radial-gradient(circle at 15% 20%, rgba(63,107,74,0.06) 0, transparent 45%),
-      radial-gradient(circle at 85% 80%, rgba(166,118,74,0.07) 0, transparent 45%),
-      var(--paper);
+  /* ---- Landing hero: entering the world of chemistry ---- */
+  :root{
+    --hero-1:#0E1A13;
+    --hero-2:#152318;
+    --hero-line: rgba(233,240,234,0.4);
+    --hero-electron:#E7B876;
+  }
+  .hero{
+    position:relative; overflow:hidden;
+    min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:60px 20px 120px;
+    background: linear-gradient(180deg, var(--hero-1) 0%, var(--hero-2) 62%, var(--paper) 100%);
+    color:#F2F1E9;
+  }
+  .hero-bg{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .hero-ring{
+    position:absolute; top:14%; right:8%; width:180px; height:180px;
+    border:1.5px solid rgba(231,184,118,0.18); border-radius:50%;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    animation: heroRingSpin 46s linear infinite;
+  }
+  .hero-ring::after{
+    content:''; position:absolute; inset:14px;
+    border:1.5px solid rgba(231,184,118,0.12);
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  }
+  @keyframes heroRingSpin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+  .bubble{
+    position:absolute; bottom:-30px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.5), rgba(143,199,155,0.08));
+    animation-name: bubbleRise; animation-timing-function:ease-in; animation-iteration-count:infinite;
+  }
+  @keyframes bubbleRise{
+    0%{ transform:translateY(0) scale(1); opacity:0; }
+    10%{ opacity:.7; }
+    85%{ opacity:.35; }
+    100%{ transform:translateY(-110vh) scale(1.15); opacity:0; }
+  }
+  .hero-atom{ position:relative; z-index:1; margin-bottom:18px; filter:drop-shadow(0 0 26px rgba(143,199,155,0.18)); }
+  .hero-atom .nucleus{ animation: nucleusPulse 3.4s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+  @keyframes nucleusPulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.14); opacity:.85; } }
+  .hero-electron{
+    offset-rotate:0deg; animation-name:heroElectronTravel; animation-timing-function:linear; animation-iteration-count:infinite;
+    filter:drop-shadow(0 0 4px rgba(231,184,118,0.8));
+  }
+  @keyframes heroElectronTravel{ from{ offset-distance:0%; } to{ offset-distance:100%; } }
+  .hero-title{ position:relative; z-index:1; font-size:clamp(34px,7vw,54px); color:#fff; margin-bottom:10px; animation:heroFadeUp .8s ease both; }
+  .hero-title .dot{ color:var(--hero-electron); }
+  .hero-tag{ position:relative; z-index:1; color:#C9D4C9; font-size:14.5px; max-width:380px; margin:0 0 30px; animation:heroFadeUp .8s .12s ease both; }
+  @keyframes heroFadeUp{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+  .hero-cta{
+    position:relative; z-index:1; display:inline-flex; align-items:center; gap:8px;
+    background:rgba(242,241,233,0.08); border:1px solid rgba(242,241,233,0.35); color:#fff;
+    padding:12px 22px; border-radius:30px; font-size:13.5px; letter-spacing:0.03em;
+    transition:background .18s ease, transform .15s ease; animation:heroFadeUp .8s .22s ease both;
+  }
+  .hero-cta:hover{ background:rgba(242,241,233,0.16); }
+  .hero-cta:active{ transform:translateY(1px); }
+  .hero-cta-arrow{ display:inline-block; animation:heroArrowBob 1.6s ease-in-out infinite; }
+  @keyframes heroArrowBob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(3px); } }
+  @media (prefers-reduced-motion: reduce){
+    .hero-ring, .bubble, .hero-atom .nucleus, .hero-electron, .hero-cta-arrow{ animation:none !important; }
+  }
+  @media (max-width:640px){ .hero{ padding:50px 18px 100px; } .hero-atom svg{ width:220px; height:220px; } }
+
+  /* ---- Auth section (post-hero, calm/light) ---- */
+  .auth-section{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:56px 20px 60px; background:var(--paper);
   }
   .auth-card{
     width:100%; max-width:440px;
@@ -85,10 +146,25 @@
   .auth-header{ text-align:center; margin-bottom:26px; }
   .auth-header p{ color:var(--ink-soft); margin:8px 0 0; font-size:13.5px; }
 
-  .role-toggle{ display:flex; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-bottom:22px; }
-  .role-toggle button{ flex:1; padding:10px 6px; background:var(--panel); border:none; font-size:13.5px; font-weight:500; color:var(--ink-soft); border-right:1px solid var(--line); }
-  .role-toggle button:last-child{ border-right:none; }
-  .role-toggle button.active{ background:var(--ink); color:#fff; }
+  .teacher-entry-wrap{ text-align:center; margin-top:26px; }
+  .teacher-entry-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:#1B2A20; border:1.5px dashed rgba(255,255,255,0.35); color:#EDEDE6;
+    padding:9px 20px; border-radius:5px; font-family:'Caveat', cursive; font-weight:700; font-size:20px;
+    transform:rotate(-1.1deg); transition:background .15s ease, transform .15s ease;
+  }
+  .teacher-entry-btn:hover{ background:#233523; transform:rotate(-1.1deg) translateY(-1px); }
+  .teacher-entry-btn:active{ transform:rotate(-1.1deg) translateY(0px); }
+  .teacher-entry-btn svg{ width:18px; height:18px; flex-shrink:0; }
+  .teacher-entry-hint{ font-size:11.5px; color:var(--ink-soft); margin-top:8px; letter-spacing:0.02em; }
+
+  /* ---- Chalkboard teacher-login modal ---- */
+  .chalk-card{ background:#1B2A20 !important; border:1.5px dashed rgba(255,255,255,0.32); }
+  .chalk-card .chalk-heading{ font-family:'Caveat', cursive; font-weight:700; font-size:32px; color:#fff; margin-bottom:2px; }
+  .chalk-card .field label{ color:#B9C4BB; }
+  .chalk-card .field input{ background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.25); color:#fff; }
+  .chalk-card .field input:focus{ border-color:var(--hero-electron); box-shadow:0 0 0 3px rgba(231,184,118,0.2); }
+  .chalk-card .btn-ghost{ border-color:rgba(255,255,255,0.3); color:#EDEDE6; }
 
   .subtab{ display:flex; gap:18px; margin-bottom:20px; border-bottom:1px solid var(--line); }
   .subtab button{ background:none; border:none; padding:8px 2px 10px; font-size:13.5px; color:var(--ink-soft); border-bottom:2px solid transparent; margin-bottom:-1px; }
@@ -268,6 +344,13 @@
 <div id="app"></div>
 
 <script>
+
+// Paste your API URL and copied anon key here
+const SUPABASE_URL = 'https://vzwkqvecqpzvfnialanf.supabase.co'; // Replace with your copied URL (remove /rest/v1 at the end if present)
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6d2txdmVjcXB6dmZuaWFsYW5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MjYwMDcsImV4cCI6MjEwMzUwMjAwN30.PyWSfGGd8ubtDVpOZL7Yl5Xim0n87Ug4eL64C3GrbJ8';
+
+// Initialize Supabase
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 /* ============================= STORAGE HELPERS ============================= */
 /* Chemorbit tries the platform's persistent storage first. If it's unavailable
    or failing (e.g. viewed outside the Claude artifact preview), it falls back
@@ -339,11 +422,16 @@ async function allUsers(){
 async function allStudents(){ return (await allUsers()).filter(u=>u.role==='student'); }
 
 async function allExams(){
-  const keys = await listKeys(KP.exam);
-  const out = [];
-  for(const k of keys){ const e = await getJSON(k); if(e) out.push(e); }
-  out.sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
-  return out;
+  const { data, error } = await supabase
+    .from('exams')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching exams:', error);
+    return [];
+  }
+  return data || [];
 }
 
 async function submissionsForExam(examId){
@@ -355,17 +443,9 @@ async function submissionsForExam(examId){
 
 /* attendance key: chemorbit:attendance:<date>:<username> */
 async function allAttendanceRecords(){
-  const keys = await listKeys(KP.att);
-  const out = [];
-  for(const k of keys){
-    const rest = k.slice(KP.att.length); // "<date>:<username>"
-    const idx = rest.indexOf(':');
-    if(idx<0) continue;
-    const date = rest.slice(0,idx), username = rest.slice(idx+1);
-    const rec = await getJSON(k);
-    if(rec) out.push({date, username, ...rec});
-  }
-  return out;
+  const { data, error } = await supabase.from('attendance').select('*');
+  if (error) { console.error('Attendance error:', error); return []; }
+  return data || [];
 }
 
 /* ============================= SESSION / STATE ============================= */
@@ -374,7 +454,6 @@ let view = null;    // current sub-view
 let examTakeId = null;
 let resultsExamId = null;
 let attDate = todayISO();
-let authRole = 'student'; // 'student' | 'teacher'
 let authTab = 'login'; // 'login' | 'signup'
 let draftQuestions = [ blankQuestion() ];
 
@@ -401,6 +480,37 @@ const NAV_ICONS = {
   results: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M11 20V4M18 20v-6"/><path d="M2.5 20.5h19"/></svg>`,
   payments: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="M3 10h18"/><circle cx="17" cy="14.2" r="1.1" fill="currentColor" stroke="none"/></svg>`,
 };
+const TEACHER_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4L2 8.5l10 4.5 10-4.5L12 4z"/><path d="M6 10.5V15c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/><path d="M22 8.5v6"/></svg>`;
+
+/* ---- Hero: an atom model with electrons on real elliptical orbits ---- */
+function heroAtomSVG(){
+  const orbits = [0, 60, 120]; // classic 3-ellipse atom symbol
+  const speeds = [9, 12, 15];
+  const delays = [0, -4, -8];
+  const cx=150, cy=150, rx=112, ry=48;
+  const pathFor = ()=> `M ${cx+rx} ${cy} A ${rx} ${ry} 0 1 1 ${cx-rx} ${cy} A ${rx} ${ry} 0 1 1 ${cx+rx} ${cy}`;
+  const rings = orbits.map((deg,i)=>`
+    <g transform="rotate(${deg} ${cx} ${cy})">
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="var(--hero-line)" stroke-width="1.1"/>
+      <circle class="hero-electron" r="4.2" fill="var(--hero-electron)"
+        style="offset-path: path('${pathFor()}'); animation-duration:${speeds[i]}s; animation-delay:${delays[i]}s;"/>
+    </g>`).join('');
+  return `<svg width="260" height="260" viewBox="0 0 300 300" fill="none">
+    ${rings}
+    <circle class="nucleus" cx="150" cy="150" r="12" fill="#8FC79B"/>
+  </svg>`;
+}
+function bubblesHTML(count){
+  let out = '';
+  for(let i=0;i<count;i++){
+    const left = (i*67 % 100);
+    const size = 5 + (i*13 % 14);
+    const dur = 9 + (i*7 % 10);
+    const delay = -(i*3 % 12);
+    out += `<span class="bubble" style="left:${left}%; width:${size}px; height:${size}px; animation-duration:${dur}s; animation-delay:${delay}s;"></span>`;
+  }
+  return out;
+}
 
 /* ============================= TOASTS / MODAL ============================= */
 function toast(msg, tone){
@@ -475,30 +585,31 @@ function bannerHTML(){
 function authScreen(){
   return `
   ${bannerHTML()}
-  <div class="auth-wrap">
+  <section class="hero">
+    <div class="hero-bg">${bubblesHTML(14)}<div class="hero-ring"></div></div>
+    <div class="hero-atom">${heroAtomSVG()}</div>
+    <h1 class="hero-title">Chem<span class="dot">orbit</span></h1>
+    <p class="hero-tag">Exams, attendance, and results &mdash; orbiting one clear system.</p>
+    <button class="hero-cta" id="hero-enter-btn" type="button">Enter Chemorbit <span class="hero-cta-arrow">&darr;</span></button>
+  </section>
+  <section class="auth-section" id="auth-section">
     <div class="auth-card">
       <div class="auth-header">
-        <div style="display:flex; justify-content:center; margin-bottom:14px;">${markHTML(34)}</div>
-        <p>A quiet place to publish exams, sit them, and track a class.</p>
+        <div style="display:flex; justify-content:center; margin-bottom:14px;">${markHTML(30)}</div>
+        <p>Sign up once, then sit exams and mark attendance any time.</p>
       </div>
-      <div class="role-toggle">
-        <button data-role="student" class="${authRole==='student'?'active':''}">Student</button>
-        <button data-role="teacher" class="${authRole==='teacher'?'active':''}">Teacher (Sir)</button>
+      <div class="subtab">
+        <button data-tab="login" class="${authTab==='login'?'active':''}">Log in</button>
+        <button data-tab="signup" class="${authTab==='signup'?'active':''}">Sign up</button>
       </div>
-      ${authRole==='student' ? `
-        <div class="subtab">
-          <button data-tab="login" class="${authTab==='login'?'active':''}">Log in</button>
-          <button data-tab="signup" class="${authTab==='signup'?'active':''}">Sign up</button>
-        </div>
-        <div id="auth-error"></div>
-        ${authTab==='login' ? studentLoginForm() : studentSignupForm()}
-      ` : `
-        <div id="auth-error"></div>
-        ${teacherLoginForm()}
-        <div class="hint-box">Default teacher login &mdash; username <strong class="mono">sir</strong>, password <strong class="mono">orbit123</strong>. Sign in and change how you use it as needed.</div>
-      `}
+      <div id="auth-error"></div>
+      ${authTab==='login' ? studentLoginForm() : studentSignupForm()}
     </div>
-  </div>`;
+    <div class="teacher-entry-wrap">
+      <button class="teacher-entry-btn" id="open-teacher-login" type="button">${TEACHER_ICON}Sir's Login</button>
+      <div class="teacher-entry-hint">Teacher access only</div>
+    </div>
+  </section>`;
 }
 
 function studentLoginForm(){
@@ -507,14 +618,6 @@ function studentLoginForm(){
     <div class="field"><label>Username</label><input type="text" id="li-username" autocomplete="username" required></div>
     <div class="field"><label>Password</label><input type="password" id="li-password" autocomplete="current-password" required></div>
     <button class="btn btn-accent btn-block" type="submit">Log in</button>
-  </form>`;
-}
-function teacherLoginForm(){
-  return `
-  <form id="teacher-login-form">
-    <div class="field"><label>Username</label><input type="text" id="ti-username" value="sir" required></div>
-    <div class="field"><label>Password</label><input type="password" id="ti-password" required></div>
-    <button class="btn btn-block" type="submit">Log in as teacher</button>
   </form>`;
 }
 function studentSignupForm(){
@@ -533,12 +636,55 @@ function studentSignupForm(){
   </form>`;
 }
 
+function openTeacherLoginModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card chalk-card" role="dialog" aria-modal="true" aria-label="Sir's login">
+      <div class="chalk-heading">Sir's Login</div>
+      <p class="field-hint" style="color:#9FAEA3; margin:2px 0 18px;">Teacher access only.</p>
+      <div id="teacher-modal-error"></div>
+      <form id="teacher-modal-form">
+        <div class="field"><label>Username</label><input type="text" id="tm-username" value="sir" required></div>
+        <div class="field"><label>Password</label><input type="password" id="tm-password" required></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:4px;">
+          <button type="button" class="btn btn-ghost" id="tm-cancel">Cancel</button>
+          <button type="submit" class="btn btn-accent">Log in</button>
+        </div>
+      </form>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  const close = ()=>{ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 200); };
+  overlay.querySelector('#tm-cancel').onclick = close;
+  overlay.onclick = (e)=>{ if(e.target===overlay) close(); };
+  document.getElementById('tm-username').focus();
+  overlay.querySelector('#teacher-modal-form').onsubmit = async (e)=>{
+    e.preventDefault();
+    const username = document.getElementById('tm-username').value.trim();
+    const password = document.getElementById('tm-password').value;
+    const u = await getJSON(KP.user+username);
+    if(!u || u.role!=='teacher' || u.password!==password){
+      document.getElementById('teacher-modal-error').innerHTML = `<div class="error-box">Incorrect teacher credentials.</div>`;
+      return;
+    }
+    session = { username:u.username, name:u.name, role:'teacher' };
+    view = 'publish';
+    close();
+    render();
+  };
+}
+
 function bindAuthEvents(){
-  document.querySelectorAll('.role-toggle button').forEach(b=>{
-    b.onclick = ()=>{ authRole=b.dataset.role; authTab='login'; render(); };
-  });
+  const heroBtn = document.getElementById('hero-enter-btn');
+  if(heroBtn) heroBtn.onclick = ()=>{
+    document.getElementById('auth-section').scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  const otl = document.getElementById('open-teacher-login');
+  if(otl) otl.onclick = openTeacherLoginModal;
+
   document.querySelectorAll('.subtab button').forEach(b=>{
-    b.onclick = ()=>{ authTab=b.dataset.tab; render(); };
+    b.onclick = ()=>{ authTab=b.dataset.tab; render(); document.getElementById('auth-section').scrollIntoView({block:'start'}); };
   });
   const showErr = (msg)=>{ document.getElementById('auth-error').innerHTML = `<div class="error-box">${esc(msg)}</div>`; };
 
@@ -547,22 +693,17 @@ function bindAuthEvents(){
     e.preventDefault();
     const username = document.getElementById('li-username').value.trim();
     const password = document.getElementById('li-password').value;
-    const u = await getJSON(KP.user+username);
-    if(!u || u.role!=='student' || u.password!==password){ showErr('No matching student account. Check your username and password.'); return; }
-    session = { username:u.username, name:u.name, role:'student', batch:u.batch };
-    view = 'dashboard';
-    render();
-  };
+const { data: u, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', username)
+      .single();
 
-  const tlf = document.getElementById('teacher-login-form');
-  if(tlf) tlf.onsubmit = async (e)=>{
-    e.preventDefault();
-    const username = document.getElementById('ti-username').value.trim();
-    const password = document.getElementById('ti-password').value;
-    const u = await getJSON(KP.user+username);
-    if(!u || u.role!=='teacher' || u.password!==password){ showErr('Incorrect teacher credentials.'); return; }
-    session = { username:u.username, name:u.name, role:'teacher' };
-    view = 'publish';
+    if(error || !u || u.role !== 'student' || u.password !== password){ 
+      showErr('No matching student account. Check your username and password.'); 
+      return; 
+    }    session = { username:u.username, name:u.name, role:'student', batch:u.batch };
+    view = 'dashboard';
     render();
   };
 
@@ -576,19 +717,18 @@ function bindAuthEvents(){
     const batch = document.getElementById('su-batch').value.trim();
     if(!/^[a-zA-Z0-9_]{3,20}$/.test(username)){ showErr('Username must be 3-20 letters, numbers or underscores.'); return; }
     if(username.toLowerCase()==='sir'){ showErr('That username is reserved. Please choose another.'); return; }
-    const existing = await getJSON(KP.user+username);
-    if(existing){ showErr('That username is already taken.'); return; }
-    const user = { username, password, name, phone, batch, role:'student', joinedAt:new Date().toISOString() };
-    const ok = await setJSON(KP.user+username, user);
-    if(!ok){ showErr('Could not create the account. Please try again.'); return; }
-    session = { username, name, role:'student', batch };
+const { error } = await supabase
+      .from('profiles')
+      .insert([{ username, password, full_name: name, phone, batch, role: 'student' }]);
+
+    if(error){ showErr('Could not create account: ' + error.message); return; }    session = { username, name, role:'student', batch };
     view = 'dashboard';
     render();
     toast(`Welcome to Chemorbit, ${name.split(' ')[0]}.`, 'success');
   };
 }
 
-function logout(){ session=null; view=null; authRole='student'; authTab='login'; render(); }
+function logout(){ session=null; view=null; authTab='login'; render(); }
 
 /* ============================= SHELL FRAMES ============================= */
 function shellFrame(navItems, activeView, bodyHTML){
@@ -808,9 +948,17 @@ function bindStudentContentEvents(){
         answers['q'+i] = val;
         if(val===q.correct) score++;
       });
-      const submission = { username:session.username, examId:examTakeId, answers, score, total:ex.questions.length, submittedAt:new Date().toISOString() };
-      await setJSON(KP.sub+examTakeId+':'+session.username, submission);
-      toast(`Submitted — you scored ${score}/${ex.questions.length}.`, 'success');
+const { error } = await supabase
+  .from('submissions')
+  .insert([{
+    exam_id: examTakeId,
+    username: session.username,
+    answers: answers,
+    score: score,
+    total: ex.questions.length
+  }]);
+
+if (error) console.error('Submission error:', error);      toast(`Submitted — you scored ${score}/${ex.questions.length}.`, 'success');
       view='exam'; examTakeId=null; render();
     };
   }
@@ -1009,10 +1157,24 @@ function bindTeacherContentEvents(){
         errBox.innerHTML = `<div class="error-box">Every question needs its text and all four options filled in.</div>`; return;
       }
     }
-    const id = 'exam_'+Date.now();
-    const exam = { id, title, subject, questions: draftQuestions.map(q=>({text:q.text.trim(), options:q.options.map(o=>o.trim()), correct:q.correct})), createdAt:new Date().toISOString(), publishedBy:session.username };
-    await setJSON(KP.exam+id, exam);
-    draftQuestions = [ blankQuestion() ];
+const id = 'exam_' + Date.now();
+const exam = { 
+  id, 
+  title, 
+  subject, 
+  questions: draftQuestions.map(q => ({
+    text: q.text.trim(), 
+    options: q.options.map(o => o.trim()), 
+    correct: q.correct
+  })), 
+  published_by: session.username 
+};
+
+const { error } = await supabase
+  .from('exams')
+  .insert([exam]);
+
+if (error) console.error('Publish error:', error);    draftQuestions = [ blankQuestion() ];
     resultsExamId = id;
     view='results';
     toast('Exam published — students can see it now.', 'success');
