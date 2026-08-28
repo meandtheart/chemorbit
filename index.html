@@ -351,57 +351,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Initialize Supabase
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-/* ============================= STORAGE HELPERS ============================= */
-/* Chemorbit tries the platform's persistent storage first. If it's unavailable
-   or failing (e.g. viewed outside the Claude artifact preview), it falls back
-   to an in-memory store so the site still works for the current browser tab
-   — data just won't survive a reload in that case. A banner tells you which
-   mode you're in. */
-let storageMode = 'checking'; // 'cloud' | 'memory'
-const memStore = {};
-
-async function probeStorage(){
-  try {
-    const testKey = '__chemorbit_probe__';
-    localStorage.setItem(testKey, 'ok');
-    if (localStorage.getItem(testKey) === 'ok') {
-      localStorage.removeItem(testKey);
-      storageMode = 'cloud'; // Disables the Demo Mode banner
-    } else {
-      storageMode = 'memory';
-    }
-  } catch (e) {
-    console.warn('LocalStorage unavailable, using memory store');
-    storageMode = 'memory';
-  }
-}
-
-async function getJSON(key){
-  if(storageMode==='memory'){
-    return Object.prototype.hasOwnProperty.call(memStore,key) ? JSON.parse(memStore[key]) : null;
-  }
-  try{ const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; }
-  catch(e){ return null; }
-}
-
-async function setJSON(key, obj){
-  if(storageMode==='memory'){
-    memStore[key] = JSON.stringify(obj);
-    return true;
-  }
-  try{ localStorage.setItem(key, JSON.stringify(obj)); return true; }
-  catch(e){ console.error('storage set failed', e); return false; }
-}
-async function setJSON(key, obj){
-  if(storageMode==='memory'){
-    memStore[key] = JSON.stringify(obj);
-    return true;
-  }
-  try{ const r = await window.storage.set(key, JSON.stringify(obj), true); return !!r; }
-  catch(e){ console.error('storage set failed', e); return false; }
-}
-
-const KP = { user:'chemorbit:user:', exam:'chemorbit:exam:', sub:'chemorbit:submission:', att:'chemorbit:attendance:', pay:'chemorbit:payment:' };
+/* ============================= DATA LAYER (Supabase) ============================= */
+/* All persistent data lives in Supabase (see tables: profiles, exams, submissions,
+   attendance, payments). No localStorage/in-memory fallback — this is a live
+   multi-user site, so every visitor must see the same real data. */
 
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
@@ -409,22 +362,30 @@ function fmtDate(iso){ try{ return new Date(iso+'T00:00:00').toLocaleDateString(
 function fmtWhen(iso){ try{ return new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return iso; } }
 
 async function bootstrapTeacher(){
-  const existing = await getJSON(KP.user+'sir');
+  const { data: existing } = await supabaseClient
+    .from('profiles')
+    .select('username')
+    .eq('username', 'sir')
+    .maybeSingle();
   if(!existing){
-    await setJSON(KP.user+'sir', { username:'sir', password:'orbit123', name:'Sir', role:'teacher', joinedAt:new Date().toISOString() });
+    const { error } = await supabaseClient
+      .from('profiles')
+      .insert([{ username:'sir', password:'orbit123', full_name:'Sir', role:'teacher' }]);
+    if(error) console.error('bootstrapTeacher error:', error);
   }
 }
 
-async function allUsers(){
-  const keys = await listKeys(KP.user);
-  const out = [];
-  for(const k of keys){ const u = await getJSON(k); if(u) out.push(u); }
-  return out;
+async function allStudents(){
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student');
+  if(error){ console.error('Error fetching students:', error); return []; }
+  return (data || []).map(u => ({ ...u, name: u.full_name }));
 }
-async function allStudents(){ return (await allUsers()).filter(u=>u.role==='student'); }
 
 async function allExams(){
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('exams')
     .select('*')
     .order('created_at', { ascending: false });
@@ -437,16 +398,54 @@ async function allExams(){
 }
 
 async function submissionsForExam(examId){
-  const keys = await listKeys(KP.sub+examId+':');
-  const out = [];
-  for(const k of keys){ const s = await getJSON(k); if(s) out.push(s); }
-  return out;
+  const { data, error } = await supabaseClient
+    .from('submissions')
+    .select('*')
+    .eq('exam_id', examId);
+  if(error){ console.error('Error fetching submissions:', error); return []; }
+  return (data || []).map(s => ({ ...s, submittedAt: s.submitted_at }));
 }
 
-/* attendance key: chemorbit:attendance:<date>:<username> */
+async function submissionFor(examId, username){
+  const { data, error } = await supabaseClient
+    .from('submissions')
+    .select('*')
+    .eq('exam_id', examId)
+    .eq('username', username)
+    .maybeSingle();
+  if(error){ console.error('Error checking submission:', error); return null; }
+  return data ? { ...data, submittedAt: data.submitted_at } : null;
+}
+
+async function examById(examId){
+  const { data, error } = await supabaseClient
+    .from('exams')
+    .select('*')
+    .eq('id', examId)
+    .maybeSingle();
+  if(error){ console.error('Error fetching exam:', error); return null; }
+  return data;
+}
+
 async function allAttendanceRecords(){
-  const { data, error } = await supabase.from('attendance').select('*');
+  const { data, error } = await supabaseClient.from('attendance').select('*');
   if (error) { console.error('Attendance error:', error); return []; }
+  return data || [];
+}
+
+async function paymentFor(username){
+  const { data, error } = await supabaseClient
+    .from('payments')
+    .select('*')
+    .eq('username', username)
+    .maybeSingle();
+  if(error){ console.error('Error fetching payment:', error); return null; }
+  return data;
+}
+
+async function allPayments(){
+  const { data, error } = await supabaseClient.from('payments').select('*');
+  if(error){ console.error('Error fetching payments:', error); return []; }
   return data || [];
 }
 
@@ -579,14 +578,8 @@ async function render(){
 }
 
 /* ============================= AUTH SCREEN ============================= */
-function bannerHTML(){
-  if(storageMode!=='memory') return '';
-  return `<div class="mode-banner">Demo mode &mdash; this browser tab isn't connected to Chemorbit's saved storage, so accounts and results will reset if you reload the page.</div>`;
-}
-
 function authScreen(){
   return `
-  ${bannerHTML()}
   <section class="hero">
     <div class="hero-bg">${bubblesHTML(14)}<div class="hero-ring"></div></div>
     <div class="hero-atom">${heroAtomSVG()}</div>
@@ -665,12 +658,16 @@ function openTeacherLoginModal(){
     e.preventDefault();
     const username = document.getElementById('tm-username').value.trim();
     const password = document.getElementById('tm-password').value;
-    const u = await getJSON(KP.user+username);
-    if(!u || u.role!=='teacher' || u.password!==password){
+    const { data: u, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('username', username)
+      .maybeSingle();
+    if(error || !u || u.role!=='teacher' || u.password!==password){
       document.getElementById('teacher-modal-error').innerHTML = `<div class="error-box">Incorrect teacher credentials.</div>`;
       return;
     }
-    session = { username:u.username, name:u.name, role:'teacher' };
+    session = { username:u.username, name:u.full_name, role:'teacher' };
     view = 'publish';
     close();
     render();
@@ -695,16 +692,17 @@ function bindAuthEvents(){
     e.preventDefault();
     const username = document.getElementById('li-username').value.trim();
     const password = document.getElementById('li-password').value;
-const { data: u, error } = await supabase
+    const { data: u, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('username', username)
-      .single();
+      .maybeSingle();
 
-    if(error || !u || u.role !== 'student' || u.password !== password){ 
-      showErr('No matching student account. Check your username and password.'); 
-      return; 
-    }    session = { username:u.username, name:u.name, role:'student', batch:u.batch };
+    if(error || !u || u.role !== 'student' || u.password !== password){
+      showErr('No matching student account. Check your username and password.');
+      return;
+    }
+    session = { username:u.username, name:u.full_name, role:'student', batch:u.batch };
     view = 'dashboard';
     render();
   };
@@ -719,11 +717,12 @@ const { data: u, error } = await supabase
     const batch = document.getElementById('su-batch').value.trim();
     if(!/^[a-zA-Z0-9_]{3,20}$/.test(username)){ showErr('Username must be 3-20 letters, numbers or underscores.'); return; }
     if(username.toLowerCase()==='sir'){ showErr('That username is reserved. Please choose another.'); return; }
-const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .insert([{ username, password, full_name: name, phone, batch, role: 'student' }]);
 
-    if(error){ showErr('Could not create account: ' + error.message); return; }    session = { username, name, role:'student', batch };
+    if(error){ showErr('Could not create account: ' + error.message); return; }
+    session = { username, name, role:'student', batch };
     view = 'dashboard';
     render();
     toast(`Welcome to Chemorbit, ${name.split(' ')[0]}.`, 'success');
@@ -744,7 +743,6 @@ function shellFrame(navItems, activeView, bodyHTML){
     </button>`).join('');
 
   return `
-  ${bannerHTML()}
   <div class="shell">
     <div class="sidebar">
       <div class="orbit-mark">${orbitSVG(24,'#fff')}<span class="orbit-word" style="color:#fff">Chem<span class="dot">orbit</span></span></div>
@@ -794,9 +792,9 @@ async function renderStudentShell(){
 }
 
 async function studentDashboardHTML(){
-  const [exams, allAtt, payment] = await Promise.all([ allExams(), allAttendanceRecords(), getJSON(KP.pay+session.username) ]);
+  const [exams, allAtt, payment] = await Promise.all([ allExams(), allAttendanceRecords(), paymentFor(session.username) ]);
   let subs = [];
-  for(const ex of exams){ const s = await getJSON(KP.sub+ex.id+':'+session.username); if(s) subs.push({...s, examTitle:ex.title}); }
+  for(const ex of exams){ const s = await submissionFor(ex.id, session.username); if(s) subs.push({...s, examTitle:ex.title}); }
 
   const distinctDates = new Set(allAtt.map(r=>r.date));
   const mine = allAtt.filter(r=>r.username===session.username && r.present);
@@ -814,7 +812,7 @@ async function studentDashboardHTML(){
       <div class="stat-card"><div class="label">Exams taken</div><div class="value" data-countup="${subs.length}">0</div><div class="sub">of ${exams.length} published</div></div>
       <div class="stat-card"><div class="label">Average score</div><div class="value" ${avgScorePct===null?'':`data-countup="${avgScorePct}" data-suffix="%"`}>${avgScorePct===null?'&mdash;':'0%'}</div><div class="sub">across attempted exams</div></div>
       <div class="stat-card"><div class="label">Classes attended</div><div class="value" data-countup="${attended}">0</div><div class="sub">of ${totalHeld} held</div></div>
-      <div class="stat-card"><div class="label">Payment status</div><div class="value" style="font-size:18px;"><span class="badge ${paid?'badge-paid':'badge-due'}">${paid?'Paid':'Due'}</span></div><div class="sub">${payment&&payment.updatedAt? 'Updated '+fmtWhen(payment.updatedAt) : 'Not yet reviewed'}</div></div>
+      <div class="stat-card"><div class="label">Payment status</div><div class="value" style="font-size:18px;"><span class="badge ${paid?'badge-paid':'badge-due'}">${paid?'Paid':'Due'}</span></div><div class="sub">${payment&&payment.updated_at? 'Updated '+fmtWhen(payment.updated_at) : 'Not yet reviewed'}</div></div>
     </div>
     <div class="card">
       <div class="card-title"><h3>Exam results</h3></div>
@@ -833,7 +831,7 @@ async function studentExamRoomHTML(){
 
   let rows = '';
   for(const ex of exams){
-    const sub = await getJSON(KP.sub+ex.id+':'+session.username);
+    const sub = await submissionFor(ex.id, session.username);
     rows += `
     <div class="card">
       <div class="card-title">
@@ -848,9 +846,9 @@ async function studentExamRoomHTML(){
 }
 
 async function studentExamTakeHTML(examId){
-  const ex = await getJSON(KP.exam+examId);
+  const ex = await examById(examId);
   if(!ex) return `<div class="card"><div class="empty">This exam is no longer available.</div></div>`;
-  const already = await getJSON(KP.sub+examId+':'+session.username);
+  const already = await submissionFor(examId, session.username);
   if(already){
     return `<div class="main-header"><div><div class="eyebrow">Exam room</div><h2>${esc(ex.title)}</h2></div></div>
     <div class="card"><h3>You've already submitted this exam</h3><p class="field-hint">Score: <strong>${already.score} / ${already.total}</strong></p>
@@ -910,7 +908,10 @@ function bindStudentContentEvents(){
   const mpb = document.getElementById('mark-present-btn');
   if(mpb) mpb.onclick = async ()=>{
     mpb.disabled = true; mpb.textContent='Marking...';
-    await setJSON(KP.att+todayISO()+':'+session.username, { present:true, time:new Date().toISOString() });
+    const { error } = await supabaseClient
+      .from('attendance')
+      .upsert([{ date: todayISO(), username: session.username, present: true, time: new Date().toISOString() }], { onConflict: 'date,username' });
+    if(error){ console.error('Attendance mark error:', error); toast('Could not mark attendance — please try again.', 'error'); render(); return; }
     toast('Marked present for today.', 'success');
     render();
   };
@@ -941,7 +942,7 @@ function bindStudentContentEvents(){
       e.preventDefault();
       const ok = await showConfirm('Submit this exam?', 'You can only submit once — this locks in your answers.', 'Submit exam');
       if(!ok) return;
-      const ex = await getJSON(KP.exam+examTakeId);
+      const ex = await examById(examTakeId);
       const answers = {};
       let score = 0;
       ex.questions.forEach((q,i)=>{
@@ -950,17 +951,18 @@ function bindStudentContentEvents(){
         answers['q'+i] = val;
         if(val===q.correct) score++;
       });
-const { error } = await supabase
-  .from('submissions')
-  .insert([{
-    exam_id: examTakeId,
-    username: session.username,
-    answers: answers,
-    score: score,
-    total: ex.questions.length
-  }]);
+      const { error } = await supabaseClient
+        .from('submissions')
+        .insert([{
+          exam_id: examTakeId,
+          username: session.username,
+          answers: answers,
+          score: score,
+          total: ex.questions.length
+        }]);
 
-if (error) console.error('Submission error:', error);      toast(`Submitted — you scored ${score}/${ex.questions.length}.`, 'success');
+      if(error){ console.error('Submission error:', error); toast('Could not submit — please try again.', 'error'); return; }
+      toast(`Submitted — you scored ${score}/${ex.questions.length}.`, 'success');
       view='exam'; examTakeId=null; render();
     };
   }
@@ -1108,9 +1110,9 @@ async function teacherAttendanceHTML(){
 }
 
 async function teacherPaymentsHTML(){
-  const students = await allStudents();
+  const [students, paymentRows] = await Promise.all([ allStudents(), allPayments() ]);
   const payments = {};
-  for(const s of students){ payments[s.username] = await getJSON(KP.pay+s.username); }
+  paymentRows.forEach(p => { payments[p.username] = p; });
   return `
     <div class="main-header"><div><div class="eyebrow">Payments</div><h2>Fee status</h2></div></div>
     <div class="card">
@@ -1122,7 +1124,7 @@ async function teacherPaymentsHTML(){
           return `<tr>
             <td>${esc(s.name)}</td><td>${esc(s.batch||'&mdash;')}</td>
             <td><span class="badge ${paid?'badge-paid':'badge-due'}">${paid?'Paid':'Due'}</span></td>
-            <td class="field-hint">${p&&p.updatedAt?fmtWhen(p.updatedAt):'&mdash;'}</td>
+            <td class="field-hint">${p&&p.updated_at?fmtWhen(p.updated_at):'&mdash;'}</td>
             <td><button class="btn btn-ghost btn-sm" data-toggle-pay="${s.username}" data-current="${paid?1:0}">${paid?'Mark due':'Mark paid'}</button></td>
           </tr>`;
         }).join('')}
@@ -1172,11 +1174,12 @@ const exam = {
   published_by: session.username 
 };
 
-const { error } = await supabase
-  .from('exams')
-  .insert([exam]);
+    const { error } = await supabaseClient
+      .from('exams')
+      .insert([exam]);
 
-if (error) console.error('Publish error:', error);    draftQuestions = [ blankQuestion() ];
+    if(error){ console.error('Publish error:', error); errBox.innerHTML = `<div class="error-box">Could not publish exam: ${esc(error.message)}</div>`; return; }
+    draftQuestions = [ blankQuestion() ];
     resultsExamId = id;
     view='results';
     toast('Exam published — students can see it now.', 'success');
@@ -1196,7 +1199,10 @@ if (error) console.error('Publish error:', error);    draftQuestions = [ blankQu
     b.onclick = async ()=>{
       const username = b.dataset.togglePay;
       const nowPaid = b.dataset.current==='1';
-      await setJSON(KP.pay+username, { paid: !nowPaid, updatedAt:new Date().toISOString() });
+      const { error } = await supabaseClient
+        .from('payments')
+        .upsert([{ username, paid: !nowPaid, updated_at: new Date().toISOString() }], { onConflict: 'username' });
+      if(error){ console.error('Payment toggle error:', error); toast('Could not update payment — please try again.', 'error'); render(); return; }
       toast(nowPaid ? 'Marked as due.' : 'Marked as paid.', 'success');
       render();
     };
@@ -1206,7 +1212,6 @@ if (error) console.error('Publish error:', error);    draftQuestions = [ blankQu
 /* ============================= INIT ============================= */
 (async function init(){
   document.getElementById('app').innerHTML = `<div class="loading">Loading Chemorbit&hellip;</div>`;
-  await probeStorage();
   await bootstrapTeacher();
   render();
 })();
