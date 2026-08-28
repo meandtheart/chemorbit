@@ -384,22 +384,7 @@ async function getJSON(key){
   catch(e){ return null; }
 }
 
-async function setJSON(key, obj){
-  if(storageMode==='memory'){
-    memStore[key] = JSON.stringify(obj);
-    return true;
-  }
-  try{ localStorage.setItem(key, JSON.stringify(obj)); return true; }
-  catch(e){ console.error('storage set failed', e); return false; }
-}
-async function setJSON(key, obj){
-  if(storageMode==='memory'){
-    memStore[key] = JSON.stringify(obj);
-    return true;
-  }
-  try{ const r = await window.storage.set(key, JSON.stringify(obj), true); return !!r; }
-  catch(e){ console.error('storage set failed', e); return false; }
-}
+
 
 const KP = { user:'chemorbit:user:', exam:'chemorbit:exam:', sub:'chemorbit:submission:', att:'chemorbit:attendance:', pay:'chemorbit:payment:' };
 
