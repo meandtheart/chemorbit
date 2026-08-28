@@ -361,34 +361,36 @@ let storageMode = 'checking'; // 'cloud' | 'memory'
 const memStore = {};
 
 async function probeStorage(){
-  try{
-    if(!window.storage || typeof window.storage.set!=='function') throw new Error('no window.storage');
+  try {
     const testKey = '__chemorbit_probe__';
-    const w = await window.storage.set(testKey, 'ok', true);
-    if(!w) throw new Error('set returned falsy');
-    const r = await window.storage.get(testKey, true);
-    if(!r || r.value !== 'ok') throw new Error('get mismatch');
-    try{ await window.storage.delete(testKey, true); }catch(e){}
-    storageMode = 'cloud';
-  }catch(e){
-    console.warn('Chemorbit: falling back to in-memory storage —', e.message||e);
+    localStorage.setItem(testKey, 'ok');
+    if (localStorage.getItem(testKey) === 'ok') {
+      localStorage.removeItem(testKey);
+      storageMode = 'cloud'; // Disables the Demo Mode banner
+    } else {
+      storageMode = 'memory';
+    }
+  } catch (e) {
+    console.warn('LocalStorage unavailable, using memory store');
     storageMode = 'memory';
   }
 }
 
-async function listKeys(prefix){
-  if(storageMode==='memory'){
-    return Object.keys(memStore).filter(k=>!prefix || k.startsWith(prefix));
-  }
-  try{ const r = await window.storage.list(prefix, true); return (r && r.keys) ? r.keys : []; }
-  catch(e){ return []; }
-}
 async function getJSON(key){
   if(storageMode==='memory'){
     return Object.prototype.hasOwnProperty.call(memStore,key) ? JSON.parse(memStore[key]) : null;
   }
-  try{ const r = await window.storage.get(key, true); return (r && r.value) ? JSON.parse(r.value) : null; }
+  try{ const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; }
   catch(e){ return null; }
+}
+
+async function setJSON(key, obj){
+  if(storageMode==='memory'){
+    memStore[key] = JSON.stringify(obj);
+    return true;
+  }
+  try{ localStorage.setItem(key, JSON.stringify(obj)); return true; }
+  catch(e){ console.error('storage set failed', e); return false; }
 }
 async function setJSON(key, obj){
   if(storageMode==='memory'){
