@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chemorbit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1E2A22;
+    --ink-soft:#4B5850;
+    --paper:#F1F2EC;
+    --panel:#FFFFFF;
+    --line:#D8DACE;
+    --accent:#3F6B4A;
+    --accent-dark:#2C4E35;
+    --brass:#A6764A;
+    --danger:#A23B33;
+    --danger-bg:#F6E9E7;
+    --success-bg:#E9F0EA;
+    --brass-bg:#F3EAE0;
+    --radius:3px;
+    --shadow:0 1px 2px rgba(30,42,34,0.06), 0 4px 14px rgba(30,42,34,0.05);
+  }
+  *{box-sizing:border-box;}
+  html{ scroll-behavior:smooth; }
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+  *:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  h1,h2,h3,h4{
+    font-family:'Spectral', Georgia, serif;
+    font-weight:600;
+    margin:0 0 0.3em 0;
+    color:var(--ink);
+    letter-spacing:0.01em;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  a{ color:var(--accent-dark); }
+  button{ font-family:inherit; cursor:pointer; }
+  input,select,textarea{ font-family:inherit; font-size:14px; }
+
+  /* ---- Orbit mark ---- */
+  .orbit-mark{ display:inline-flex; align-items:center; gap:10px; }
+  .orbit-mark svg{ display:block; overflow:visible; }
+  .orbit-word{ font-family:'Spectral', serif; font-weight:700; font-size:20px; letter-spacing:0.02em; color:var(--ink); }
+  .orbit-word .dot{ color:var(--brass); }
+  .orbit-dot{
+    offset-path: path('M 37 20 A 17 8 0 1 1 3 20 A 17 8 0 1 1 37 20');
+    offset-rotate: 0deg;
+    animation: orbit-travel 7s linear infinite;
+  }
+  @keyframes orbit-travel{ from{ offset-distance:0%; } to{ offset-distance:100%; } }
+  @media (prefers-reduced-motion: reduce){
+    .orbit-dot{ animation:none !important; offset-distance:0% !important; }
+  }
+
+  /* ---- Layout shells ---- */
+  #app{ min-height:100vh; }
+  .auth-wrap{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:32px 20px;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(63,107,74,0.06) 0, transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(166,118,74,0.07) 0, transparent 45%),
+      var(--paper);
+  }
+  .auth-card{
+    width:100%; max-width:440px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:36px 34px 30px;
+  }
+  .auth-header{ text-align:center; margin-bottom:26px; }
+  .auth-header p{ color:var(--ink-soft); margin:8px 0 0; font-size:13.5px; }
+
+  .role-toggle{ display:flex; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-bottom:22px; }
+  .role-toggle button{ flex:1; padding:10px 6px; background:var(--panel); border:none; font-size:13.5px; font-weight:500; color:var(--ink-soft); border-right:1px solid var(--line); }
+  .role-toggle button:last-child{ border-right:none; }
+  .role-toggle button.active{ background:var(--ink); color:#fff; }
+
+  .subtab{ display:flex; gap:18px; margin-bottom:20px; border-bottom:1px solid var(--line); }
+  .subtab button{ background:none; border:none; padding:8px 2px 10px; font-size:13.5px; color:var(--ink-soft); border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .subtab button.active{ color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:5px; letter-spacing:0.02em; text-transform:uppercase; }
+  .field input, .field select, .field textarea{
+    width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:var(--radius);
+    background:#fff; color:var(--ink); outline:none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(63,107,74,0.12); }
+  .field-hint{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .field-row{ display:flex; gap:12px; }
+  .field-row .field{ flex:1; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding:10px 18px; border-radius:var(--radius); border:1px solid var(--ink);
+    background:var(--ink); color:#fff; font-size:13.5px; font-weight:500; letter-spacing:0.02em;
+    transition:opacity .15s ease;
+  }
+  .btn:hover{ opacity:0.86; }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn-block{ width:100%; }
+  .btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+  .btn-accent{ background:var(--accent); border-color:var(--accent); }
+  .btn-danger{ background:var(--danger); border-color:var(--danger); }
+  .btn-sm{ padding:6px 12px; font-size:12.5px; }
+
+  .error-box{ background:var(--danger-bg); color:var(--danger); border:1px solid #e3c6c2; padding:10px 12px; border-radius:var(--radius); font-size:13px; margin-bottom:16px; }
+  .hint-box{ background:var(--success-bg); color:var(--accent-dark); border:1px solid #cfe0d2; padding:10px 12px; border-radius:var(--radius); font-size:12.5px; margin-top:16px; }
+
+  /* ---- App shell (post-login) ---- */
+  .shell{ display:flex; min-height:100vh; }
+  .sidebar{
+    width:220px; flex-shrink:0; background:var(--ink); color:#EFEDE6;
+    display:flex; flex-direction:column; padding:24px 18px;
+  }
+  .sidebar .orbit-word, .sidebar .orbit-mark{ color:#fff; }
+  .sidebar .orbit-word{ color:#fff; }
+  .sidebar-user{ margin:22px 0 24px; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.14); }
+  .sidebar-user .name{ font-family:'Spectral', serif; font-weight:600; font-size:15px; color:#fff; }
+  .sidebar-user .role{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; color:#B9C4BB; margin-top:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:none; border:none;
+    color:#CDD5CB; padding:10px 10px; border-radius:var(--radius); font-size:13.5px; margin-bottom:2px;
+  }
+  .nav-icon{ display:flex; width:18px; height:18px; flex-shrink:0; }
+  .nav-icon svg{ width:100%; height:100%; }
+  .nav-item:hover{ background:rgba(255,255,255,0.06); color:#fff; }
+  .nav-item.active{ background:rgba(255,255,255,0.1); color:#fff; }
+  .nav-item.active .nav-icon{ color:var(--brass); }
+  .nav-item{ transition:background .15s ease, color .15s ease; }
+  .sidebar-foot{ margin-top:auto; padding-top:16px; border-top:1px solid rgba(255,255,255,0.14); }
+  .logout-btn{ background:none; border:1px solid rgba(255,255,255,0.22); color:#D8DDD3; width:100%; padding:9px; border-radius:var(--radius); font-size:12.5px; }
+  .logout-btn:hover{ background:rgba(255,255,255,0.08); }
+
+  .main{ flex:1; min-width:0; padding:34px 40px 60px; }
+  .main-header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:26px; flex-wrap:wrap; gap:10px; }
+  .main-header .eyebrow{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:4px; }
+  .content{ max-width:960px; }
+
+  /* mobile bottom app-bar */
+  .mobile-tabs{ display:none; }
+
+  @media (max-width: 800px){
+    .shell{ flex-direction:column; }
+    .sidebar{ width:100%; flex-direction:row; align-items:center; padding:14px 16px; flex-wrap:wrap; }
+    .sidebar .orbit-mark{ margin-right:auto; }
+    .sidebar-user{ display:none; }
+    .sidebar-nav{ display:none; }
+    .sidebar-foot{ margin:0; padding:0; border:none; width:auto; }
+    .logout-btn{ width:auto; padding:7px 12px; }
+    .mobile-tabs{
+      display:flex; position:fixed; left:0; right:0; bottom:0; z-index:20;
+      background:var(--panel); border-top:1px solid var(--line);
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+      box-shadow:0 -2px 14px rgba(30,42,34,0.07);
+    }
+    .mobile-tabs button{
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+      background:none; border:none; padding:6px 2px; border-radius:8px;
+      font-size:10.5px; color:var(--ink-soft); transition:color .15s ease, background .15s ease;
+    }
+    .mobile-tabs button .nav-icon{ width:20px; height:20px; }
+    .mobile-tabs button.active{ color:var(--accent-dark); background:var(--success-bg); }
+    .main{ padding:18px 16px calc(76px + env(safe-area-inset-bottom)); }
+  }
+
+  @media (hover:hover) and (pointer:fine){
+    .stat-card{ transition:transform .15s ease, box-shadow .15s ease; }
+    .stat-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow); }
+    tbody tr{ transition:background .12s ease; }
+    tbody tr:hover td{ background:#FAFAF6; }
+  }
+  .btn{ transition:opacity .15s ease, transform .08s ease, box-shadow .15s ease; }
+  .btn:active{ transform:translateY(1px); }
+
+  /* ---- Cards / tables / badges ---- */
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px 24px; margin-bottom:18px; box-shadow:var(--shadow); }
+  .card-title{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:22px; }
+  .stat-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
+  .stat-card .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:8px; }
+  .stat-card .value{ font-family:'Spectral', serif; font-size:26px; font-weight:600; }
+  .stat-card .sub{ font-size:12px; color:var(--ink-soft); margin-top:3px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line); }
+  td{ padding:10px 10px; border-bottom:1px solid #EAE8DF; vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  tr.top-row td{ background:var(--brass-bg); }
+
+  .badge{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:600; letter-spacing:0.02em; }
+  .badge-present{ background:var(--success-bg); color:var(--accent-dark); }
+  .badge-absent{ background:var(--danger-bg); color:var(--danger); }
+  .badge-paid{ background:var(--success-bg); color:var(--accent-dark); }
+  .badge-due{ background:var(--brass-bg); color:var(--brass); }
+  .badge-top{ background:var(--brass); color:#fff; }
+
+  .divider{ height:1px; background:var(--line); margin:20px 0; }
+  .empty{ text-align:center; padding:40px 20px; color:var(--ink-soft); }
+  .empty svg{ margin-bottom:10px; opacity:0.5; }
+
+  .question-block{ border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px; background:#FCFCFA; }
+  .question-block .qnum{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); margin-bottom:8px; }
+  .opt-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .opt-row input[type=text]{ flex:1; }
+  .opt-row input[type=radio]{ accent-color:var(--accent); width:16px; height:16px; }
+  .opt-label{ font-size:11px; color:var(--ink-soft); width:16px; }
+
+  .exam-q{ margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid var(--line); }
+  .exam-q:last-child{ border-bottom:none; }
+  .exam-q .qtext{ font-weight:500; margin-bottom:10px; }
+  .exam-opt{ display:flex; align-items:center; gap:9px; padding:11px 12px; border:1px solid var(--line); border-radius:var(--radius); margin-bottom:7px; cursor:pointer; transition:border-color .12s ease, background .12s ease; -webkit-tap-highlight-color:transparent; }
+  .exam-opt:hover{ border-color:var(--accent); }
+  .exam-opt.is-selected{ border-color:var(--accent); background:var(--success-bg); }
+  .exam-opt input{ accent-color:var(--accent); width:17px; height:17px; flex-shrink:0; }
+
+  .exam-progress{ position:sticky; top:0; background:var(--panel); z-index:3; padding:2px 0 14px; margin-bottom:8px; }
+  .exam-progress-track{ height:6px; background:var(--line); border-radius:20px; overflow:hidden; margin-bottom:6px; }
+  .exam-progress-fill{ height:100%; background:var(--accent); border-radius:20px; width:0%; transition:width .25s ease; }
+  .exam-progress-label{ font-size:12px; color:var(--ink-soft); }
+
+  .progress-ring-wrap{ display:flex; align-items:center; gap:14px; }
+  .loading{ padding:50px 0; text-align:center; color:var(--ink-soft); font-size:13.5px; animation:pulseFade 1.3s ease-in-out infinite; }
+  @keyframes pulseFade{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
+  .mode-banner{ background:var(--brass-bg); color:var(--brass); border-bottom:1px solid #E4D3BE; padding:8px 16px; font-size:12.5px; text-align:center; }
+
+  /* ---- Content transition ---- */
+  .content{ animation:contentFade .28s ease; }
+  @keyframes contentFade{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
+  /* ---- Toasts ---- */
+  .toast-wrap{ position:fixed; left:0; right:0; bottom:16px; display:flex; flex-direction:column; align-items:center; gap:8px; z-index:100; pointer-events:none; padding:0 16px; }
+  .toast{ background:var(--ink); color:#fff; padding:10px 16px; border-radius:6px; font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.18); opacity:0; transform:translateY(8px); transition:opacity .22s ease, transform .22s ease; max-width:340px; text-align:center; }
+  .toast.show{ opacity:1; transform:translateY(0); }
+  .toast-success{ background:var(--accent-dark); }
+  .toast-error{ background:var(--danger); }
+  @media (min-width:801px){ .toast-wrap{ left:auto; right:22px; align-items:flex-end; } }
+  @media (max-width:800px){ .toast-wrap{ bottom:calc(70px + env(safe-area-inset-bottom)); } }
+
+  /* ---- Confirm modal ---- */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(30,42,34,0.42); display:flex; align-items:center; justify-content:center; z-index:200; opacity:0; transition:opacity .18s ease; padding:20px; }
+  .modal-overlay.show{ opacity:1; }
+  .modal-card{ background:#fff; border-radius:var(--radius); padding:24px 26px; max-width:380px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,0.3); transform:scale(0.96); transition:transform .18s ease; }
+  .modal-overlay.show .modal-card{ transform:scale(1); }
+
+  @media (prefers-reduced-motion: reduce){
+    .content{ animation:none !important; }
+    html{ scroll-behavior:auto !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================= STORAGE HELPERS ============================= */
+/* Chemorbit tries the platform's persistent storage first. If it's unavailable
+   or failing (e.g. viewed outside the Claude artifact preview), it falls back
+   to an in-memory store so the site still works for the current browser tab
+   — data just won't survive a reload in that case. A banner tells you which
+   mode you're in. */
+let storageMode = 'checking'; // 'cloud' | 'memory'
+const memStore = {};
+
+async function probeStorage(){
+  try{
+    if(!window.storage || typeof window.storage.set!=='function') throw new Error('no window.storage');
+    const testKey = '__chemorbit_probe__';
+    const w = await window.storage.set(testKey, 'ok', true);
+    if(!w) throw new Error('set returned falsy');
+    const r = await window.storage.get(testKey, true);
+    if(!r || r.value !== 'ok') throw new Error('get mismatch');
+    try{ await window.storage.delete(testKey, true); }catch(e){}
+    storageMode = 'cloud';
+  }catch(e){
+    console.warn('Chemorbit: falling back to in-memory storage —', e.message||e);
+    storageMode = 'memory';
+  }
+}
+
+async function listKeys(prefix){
+  if(storageMode==='memory'){
+    return Object.keys(memStore).filter(k=>!prefix || k.startsWith(prefix));
+  }
+  try{ const r = await window.storage.list(prefix, true); return (r && r.keys) ? r.keys : []; }
+  catch(e){ return []; }
+}
+async function getJSON(key){
+  if(storageMode==='memory'){
+    return Object.prototype.hasOwnProperty.call(memStore,key) ? JSON.parse(memStore[key]) : null;
+  }
+  try{ const r = await window.storage.get(key, true); return (r && r.value) ? JSON.parse(r.value) : null; }
+  catch(e){ return null; }
+}
+async function setJSON(key, obj){
+  if(storageMode==='memory'){
+    memStore[key] = JSON.stringify(obj);
+    return true;
+  }
+  try{ const r = await window.storage.set(key, JSON.stringify(obj), true); return !!r; }
+  catch(e){ console.error('storage set failed', e); return false; }
+}
+
+const KP = { user:'chemorbit:user:', exam:'chemorbit:exam:', sub:'chemorbit:submission:', att:'chemorbit:attendance:', pay:'chemorbit:payment:' };
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){ try{ return new Date(iso+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); }catch(e){ return iso; } }
+function fmtWhen(iso){ try{ return new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return iso; } }
+
+async function bootstrapTeacher(){
+  const existing = await getJSON(KP.user+'sir');
+  if(!existing){
+    await setJSON(KP.user+'sir', { username:'sir', password:'orbit123', name:'Sir', role:'teacher', joinedAt:new Date().toISOString() });
+  }
+}
+
+async function allUsers(){
+  const keys = await listKeys(KP.user);
+  const out = [];
+  for(const k of keys){ const u = await getJSON(k); if(u) out.push(u); }
+  return out;
+}
+async function allStudents(){ return (await allUsers()).filter(u=>u.role==='student'); }
+
+async function allExams(){
+  const keys = await listKeys(KP.exam);
+  const out = [];
+  for(const k of keys){ const e = await getJSON(k); if(e) out.push(e); }
+  out.sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
+  return out;
+}
+
+async function submissionsForExam(examId){
+  const keys = await listKeys(KP.sub+examId+':');
+  const out = [];
+  for(const k of keys){ const s = await getJSON(k); if(s) out.push(s); }
+  return out;
+}
+
+/* attendance key: chemorbit:attendance:<date>:<username> */
+async function allAttendanceRecords(){
+  const keys = await listKeys(KP.att);
+  const out = [];
+  for(const k of keys){
+    const rest = k.slice(KP.att.length); // "<date>:<username>"
+    const idx = rest.indexOf(':');
+    if(idx<0) continue;
+    const date = rest.slice(0,idx), username = rest.slice(idx+1);
+    const rec = await getJSON(k);
+    if(rec) out.push({date, username, ...rec});
+  }
+  return out;
+}
+
+/* ============================= SESSION / STATE ============================= */
+let session = null; // {username, name, role, batch}
+let view = null;    // current sub-view
+let examTakeId = null;
+let resultsExamId = null;
+let attDate = todayISO();
+let authRole = 'student'; // 'student' | 'teacher'
+let authTab = 'login'; // 'login' | 'signup'
+let draftQuestions = [ blankQuestion() ];
+
+function blankQuestion(){ return { text:'', options:['','','',''], correct:0 }; }
+
+/* ============================= ICONS ============================= */
+function orbitSVG(size, color){
+  color = color || 'var(--ink)';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" fill="none">
+    <ellipse cx="20" cy="20" rx="17" ry="8" stroke="${color}" stroke-width="1.4" opacity="0.55"/>
+    <circle cx="20" cy="20" r="3.4" fill="${color}"/>
+    <circle class="orbit-dot" cx="0" cy="0" r="2.1" fill="var(--brass)"/>
+  </svg>`;
+}
+function markHTML(size, wordColor){
+  return `<span class="orbit-mark">${orbitSVG(size||28)}<span class="orbit-word" style="${wordColor?'color:'+wordColor:''}">Chem<span class="dot">orbit</span></span></span>`;
+}
+
+const NAV_ICONS = {
+  dashboard: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></svg>`,
+  exam: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M9.5 12.5l2 2 4-4.5"/></svg>`,
+  attendance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="1.5"/><path d="M3.5 9h17"/><path d="M8 3v3M16 3v3"/><path d="M8.5 13.5l2 2 4-4.5"/></svg>`,
+  publish: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17.5V19a1 1 0 0 0 1 1h1.5L17 9.5a1.4 1.4 0 0 0 0-2l-.5-.5a1.4 1.4 0 0 0-2 0L4 17.5z"/><path d="M13 5.5l3 3"/></svg>`,
+  results: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M11 20V4M18 20v-6"/><path d="M2.5 20.5h19"/></svg>`,
+  payments: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="M3 10h18"/><circle cx="17" cy="14.2" r="1.1" fill="currentColor" stroke="none"/></svg>`,
+};
+
+/* ============================= TOASTS / MODAL ============================= */
+function toast(msg, tone){
+  let wrap = document.getElementById('toast-wrap');
+  if(!wrap){ wrap = document.createElement('div'); wrap.id='toast-wrap'; wrap.className='toast-wrap'; document.body.appendChild(wrap); }
+  const el = document.createElement('div');
+  el.className = 'toast'+(tone?' toast-'+tone:'');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(()=> el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 250); }, 2800);
+}
+
+function showConfirm(title, message, confirmLabel){
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <h3>${esc(title)}</h3>
+        <p class="field-hint" style="margin:8px 0 20px; font-size:13px;">${esc(message)}</p>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn btn-ghost" id="modal-cancel" type="button">Cancel</button>
+          <button class="btn btn-accent" id="modal-confirm" type="button">${esc(confirmLabel||'Confirm')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    function close(result){
+      overlay.classList.remove('show');
+      setTimeout(()=> overlay.remove(), 200);
+      resolve(result);
+    }
+    overlay.querySelector('#modal-cancel').onclick = ()=>close(false);
+    overlay.querySelector('#modal-confirm').onclick = ()=>close(true);
+    overlay.onclick = (e)=>{ if(e.target===overlay) close(false); };
+  });
+}
+
+/* ============================= COUNT-UP STATS ============================= */
+function animateCountUps(root){
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  root.querySelectorAll('[data-countup]').forEach(el=>{
+    const target = parseFloat(el.dataset.countup);
+    const suffix = el.dataset.suffix || '';
+    if(reduce || isNaN(target)){ el.textContent = (isNaN(target)?el.textContent:target)+suffix; return; }
+    const dur = 550, start = performance.now();
+    function step(now){
+      const p = Math.min(1, (now-start)/dur);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(target*eased)+suffix;
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+/* ============================= ROOT RENDER ============================= */
+async function render(){
+  const app = document.getElementById('app');
+  if(!session){ app.innerHTML = authScreen(); bindAuthEvents(); return; }
+  if(session.role==='student') await renderStudentShell();
+  else await renderTeacherShell();
+}
+
+/* ============================= AUTH SCREEN ============================= */
+function bannerHTML(){
+  if(storageMode!=='memory') return '';
+  return `<div class="mode-banner">Demo mode &mdash; this browser tab isn't connected to Chemorbit's saved storage, so accounts and results will reset if you reload the page.</div>`;
+}
+
+function authScreen(){
+  return `
+  ${bannerHTML()}
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div style="display:flex; justify-content:center; margin-bottom:14px;">${markHTML(34)}</div>
+        <p>A quiet place to publish exams, sit them, and track a class.</p>
+      </div>
+      <div class="role-toggle">
+        <button data-role="student" class="${authRole==='student'?'active':''}">Student</button>
+        <button data-role="teacher" class="${authRole==='teacher'?'active':''}">Teacher (Sir)</button>
+      </div>
+      ${authRole==='student' ? `
+        <div class="subtab">
+          <button data-tab="login" class="${authTab==='login'?'active':''}">Log in</button>
+          <button data-tab="signup" class="${authTab==='signup'?'active':''}">Sign up</button>
+        </div>
+        <div id="auth-error"></div>
+        ${authTab==='login' ? studentLoginForm() : studentSignupForm()}
+      ` : `
+        <div id="auth-error"></div>
+        ${teacherLoginForm()}
+        <div class="hint-box">Default teacher login &mdash; username <strong class="mono">sir</strong>, password <strong class="mono">orbit123</strong>. Sign in and change how you use it as needed.</div>
+      `}
+    </div>
+  </div>`;
+}
+
+function studentLoginForm(){
+  return `
+  <form id="student-login-form">
+    <div class="field"><label>Username</label><input type="text" id="li-username" autocomplete="username" required></div>
+    <div class="field"><label>Password</label><input type="password" id="li-password" autocomplete="current-password" required></div>
+    <button class="btn btn-accent btn-block" type="submit">Log in</button>
+  </form>`;
+}
+function teacherLoginForm(){
+  return `
+  <form id="teacher-login-form">
+    <div class="field"><label>Username</label><input type="text" id="ti-username" value="sir" required></div>
+    <div class="field"><label>Password</label><input type="password" id="ti-password" required></div>
+    <button class="btn btn-block" type="submit">Log in as teacher</button>
+  </form>`;
+}
+function studentSignupForm(){
+  return `
+  <form id="student-signup-form">
+    <div class="field"><label>Full name</label><input type="text" id="su-name" required></div>
+    <div class="field"><label>Username</label><input type="text" id="su-username" pattern="[a-zA-Z0-9_]{3,20}" required>
+      <div class="field-hint">3&ndash;20 characters, letters/numbers/underscore only.</div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Password</label><input type="password" id="su-password" minlength="4" required></div>
+      <div class="field"><label>Phone (optional)</label><input type="tel" id="su-phone"></div>
+    </div>
+    <div class="field"><label>Batch / class</label><input type="text" id="su-batch" placeholder="e.g. HSC Batch &ndash; Evening" required></div>
+    <button class="btn btn-accent btn-block" type="submit">Create account</button>
+  </form>`;
+}
+
+function bindAuthEvents(){
+  document.querySelectorAll('.role-toggle button').forEach(b=>{
+    b.onclick = ()=>{ authRole=b.dataset.role; authTab='login'; render(); };
+  });
+  document.querySelectorAll('.subtab button').forEach(b=>{
+    b.onclick = ()=>{ authTab=b.dataset.tab; render(); };
+  });
+  const showErr = (msg)=>{ document.getElementById('auth-error').innerHTML = `<div class="error-box">${esc(msg)}</div>`; };
+
+  const slf = document.getElementById('student-login-form');
+  if(slf) slf.onsubmit = async (e)=>{
+    e.preventDefault();
+    const username = document.getElementById('li-username').value.trim();
+    const password = document.getElementById('li-password').value;
+    const u = await getJSON(KP.user+username);
+    if(!u || u.role!=='student' || u.password!==password){ showErr('No matching student account. Check your username and password.'); return; }
+    session = { username:u.username, name:u.name, role:'student', batch:u.batch };
+    view = 'dashboard';
+    render();
+  };
+
+  const tlf = document.getElementById('teacher-login-form');
+  if(tlf) tlf.onsubmit = async (e)=>{
+    e.preventDefault();
+    const username = document.getElementById('ti-username').value.trim();
+    const password = document.getElementById('ti-password').value;
+    const u = await getJSON(KP.user+username);
+    if(!u || u.role!=='teacher' || u.password!==password){ showErr('Incorrect teacher credentials.'); return; }
+    session = { username:u.username, name:u.name, role:'teacher' };
+    view = 'publish';
+    render();
+  };
+
+  const ssf = document.getElementById('student-signup-form');
+  if(ssf) ssf.onsubmit = async (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('su-name').value.trim();
+    const username = document.getElementById('su-username').value.trim();
+    const password = document.getElementById('su-password').value;
+    const phone = document.getElementById('su-phone').value.trim();
+    const batch = document.getElementById('su-batch').value.trim();
+    if(!/^[a-zA-Z0-9_]{3,20}$/.test(username)){ showErr('Username must be 3-20 letters, numbers or underscores.'); return; }
+    if(username.toLowerCase()==='sir'){ showErr('That username is reserved. Please choose another.'); return; }
+    const existing = await getJSON(KP.user+username);
+    if(existing){ showErr('That username is already taken.'); return; }
+    const user = { username, password, name, phone, batch, role:'student', joinedAt:new Date().toISOString() };
+    const ok = await setJSON(KP.user+username, user);
+    if(!ok){ showErr('Could not create the account. Please try again.'); return; }
+    session = { username, name, role:'student', batch };
+    view = 'dashboard';
+    render();
+    toast(`Welcome to Chemorbit, ${name.split(' ')[0]}.`, 'success');
+  };
+}
+
+function logout(){ session=null; view=null; authRole='student'; authTab='login'; render(); }
+
+/* ============================= SHELL FRAMES ============================= */
+function shellFrame(navItems, activeView, bodyHTML){
+  const navHTML = navItems.map(n=>`
+    <button class="nav-item ${activeView===n.key?'active':''}" data-view="${n.key}">
+      <span class="nav-icon">${NAV_ICONS[n.key]||''}</span>${esc(n.label)}
+    </button>`).join('');
+  const mobileTabsHTML = navItems.map(n=>`
+    <button class="${activeView===n.key?'active':''}" data-view="${n.key}">
+      <span class="nav-icon">${NAV_ICONS[n.key]||''}</span><span>${esc(n.label)}</span>
+    </button>`).join('');
+
+  return `
+  ${bannerHTML()}
+  <div class="shell">
+    <div class="sidebar">
+      <div class="orbit-mark">${orbitSVG(24,'#fff')}<span class="orbit-word" style="color:#fff">Chem<span class="dot">orbit</span></span></div>
+      <div class="sidebar-user">
+        <div class="name">${esc(session.name)}</div>
+        <div class="role">${session.role==='teacher'?'Teacher':'Student'}${session.batch?' &middot; '+esc(session.batch):''}</div>
+      </div>
+      <div class="sidebar-nav" style="display:flex; flex-direction:column;">${navHTML}</div>
+      <div class="sidebar-foot"><button class="logout-btn" id="logout-btn">Log out</button></div>
+    </div>
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+      <div class="main"><div class="content" id="content">${bodyHTML}</div></div>
+    </div>
+  </div>
+  <div class="mobile-tabs">${mobileTabsHTML}</div>`;
+}
+
+function bindShellNav(navKeys){
+  document.querySelectorAll('[data-view]').forEach(b=>{
+    b.onclick = ()=>{ view = b.dataset.view; render(); };
+  });
+  const lb = document.getElementById('logout-btn'); if(lb) lb.onclick = logout;
+}
+
+/* ============================= STUDENT SHELL ============================= */
+async function renderStudentShell(){
+  const navItems = [
+    {key:'dashboard', label:'Dashboard'},
+    {key:'exam', label:'Exam room'},
+    {key:'attendance', label:'Attendance'},
+  ];
+  if(!view) view='dashboard';
+  window.scrollTo(0,0);
+  document.getElementById('app').innerHTML = shellFrame(navItems, view.startsWith('examTake')?'exam':view, `<div class="loading">Loading&hellip;</div>`);
+  bindShellNav();
+
+  let body = '';
+  if(view==='dashboard') body = await studentDashboardHTML();
+  else if(view==='exam') body = await studentExamRoomHTML();
+  else if(view==='examTake') body = await studentExamTakeHTML(examTakeId);
+  else if(view==='attendance') body = await studentAttendanceHTML();
+
+  const contentEl = document.getElementById('content');
+  contentEl.innerHTML = body;
+  bindStudentContentEvents();
+  animateCountUps(contentEl);
+}
+
+async function studentDashboardHTML(){
+  const [exams, allAtt, payment] = await Promise.all([ allExams(), allAttendanceRecords(), getJSON(KP.pay+session.username) ]);
+  let subs = [];
+  for(const ex of exams){ const s = await getJSON(KP.sub+ex.id+':'+session.username); if(s) subs.push({...s, examTitle:ex.title}); }
+
+  const distinctDates = new Set(allAtt.map(r=>r.date));
+  const mine = allAtt.filter(r=>r.username===session.username && r.present);
+  const totalHeld = distinctDates.size;
+  const attended = mine.length;
+
+  const avgScorePct = subs.length ? Math.round(100*subs.reduce((a,s)=>a+(s.score/s.total),0)/subs.length) : null;
+  const paid = payment && payment.paid;
+
+  return `
+    <div class="main-header">
+      <div><div class="eyebrow">Overview</div><h2>Welcome back, ${esc(session.name.split(' ')[0])}</h2></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Exams taken</div><div class="value" data-countup="${subs.length}">0</div><div class="sub">of ${exams.length} published</div></div>
+      <div class="stat-card"><div class="label">Average score</div><div class="value" ${avgScorePct===null?'':`data-countup="${avgScorePct}" data-suffix="%"`}>${avgScorePct===null?'&mdash;':'0%'}</div><div class="sub">across attempted exams</div></div>
+      <div class="stat-card"><div class="label">Classes attended</div><div class="value" data-countup="${attended}">0</div><div class="sub">of ${totalHeld} held</div></div>
+      <div class="stat-card"><div class="label">Payment status</div><div class="value" style="font-size:18px;"><span class="badge ${paid?'badge-paid':'badge-due'}">${paid?'Paid':'Due'}</span></div><div class="sub">${payment&&payment.updatedAt? 'Updated '+fmtWhen(payment.updatedAt) : 'Not yet reviewed'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>Exam results</h3></div>
+      ${subs.length===0 ? `<div class="empty">No exams attempted yet &mdash; check the Exam room.</div>` : `
+      <table><thead><tr><th>Exam</th><th>Score</th><th>Submitted</th></tr></thead><tbody>
+        ${subs.sort((a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||'')).map(s=>`
+          <tr><td>${esc(s.examTitle)}</td><td class="mono">${s.score} / ${s.total}</td><td>${fmtWhen(s.submittedAt)}</td></tr>
+        `).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+async function studentExamRoomHTML(){
+  const exams = await allExams();
+  if(exams.length===0) return `<div class="main-header"><div><div class="eyebrow">Exam room</div><h2>Published exams</h2></div></div><div class="card"><div class="empty">No exams have been published yet. Check back soon.</div></div>`;
+
+  let rows = '';
+  for(const ex of exams){
+    const sub = await getJSON(KP.sub+ex.id+':'+session.username);
+    rows += `
+    <div class="card">
+      <div class="card-title">
+        <div><h3 style="margin-bottom:2px;">${esc(ex.title)}</h3><div class="field-hint">${ex.questions.length} questions ${ex.subject?' &middot; '+esc(ex.subject):''}</div></div>
+        ${sub
+          ? `<span class="badge badge-paid">Completed &middot; ${sub.score}/${sub.total}</span>`
+          : `<button class="btn btn-accent btn-sm" data-start="${ex.id}">Start exam</button>`}
+      </div>
+    </div>`;
+  }
+  return `<div class="main-header"><div><div class="eyebrow">Exam room</div><h2>Published exams</h2></div></div>${rows}`;
+}
+
+async function studentExamTakeHTML(examId){
+  const ex = await getJSON(KP.exam+examId);
+  if(!ex) return `<div class="card"><div class="empty">This exam is no longer available.</div></div>`;
+  const already = await getJSON(KP.sub+examId+':'+session.username);
+  if(already){
+    return `<div class="main-header"><div><div class="eyebrow">Exam room</div><h2>${esc(ex.title)}</h2></div></div>
+    <div class="card"><h3>You've already submitted this exam</h3><p class="field-hint">Score: <strong>${already.score} / ${already.total}</strong></p>
+    <button class="btn btn-ghost btn-sm" data-view="exam">Back to exam room</button></div>`;
+  }
+  const qhtml = ex.questions.map((q,i)=>`
+    <div class="exam-q">
+      <div class="qtext"><span class="mono" style="color:var(--brass);">Q${i+1}.</span> ${esc(q.text)}</div>
+      ${q.options.map((op,oi)=>`
+        <label class="exam-opt">
+          <input type="radio" name="q${i}" value="${oi}">
+          <span>${esc(op)}</span>
+        </label>`).join('')}
+    </div>`).join('');
+  return `
+    <div class="main-header"><div><div class="eyebrow">Exam room</div><h2>${esc(ex.title)}</h2></div></div>
+    <div class="exam-progress">
+      <div class="exam-progress-track"><div class="exam-progress-fill" id="exam-progress-fill"></div></div>
+      <div class="exam-progress-label" id="exam-progress-label">0 of ${ex.questions.length} answered</div>
+    </div>
+    <div class="card">
+      <p class="field-hint" style="margin-bottom:18px;">Answer what you can &mdash; leaving a question blank counts as skipped, not wrong. You can only submit once.</p>
+      <form id="exam-take-form" data-total="${ex.questions.length}">
+        ${qhtml}
+        <button type="submit" class="btn btn-accent">Submit exam</button>
+      </form>
+    </div>`;
+}
+
+async function studentAttendanceHTML(){
+  const allAtt = await allAttendanceRecords();
+  const distinctDates = [...new Set(allAtt.map(r=>r.date))].sort().reverse();
+  const mine = allAtt.filter(r=>r.username===session.username && r.present).map(r=>r.date).sort().reverse();
+  const markedToday = mine.includes(todayISO());
+  return `
+    <div class="main-header"><div><div class="eyebrow">Attendance</div><h2>Today &mdash; ${fmtDate(todayISO())}</h2></div></div>
+    <div class="card">
+      ${markedToday
+        ? `<p><span class="badge badge-present">Marked present</span> &nbsp;You're checked in for today's class.</p>`
+        : `<p class="field-hint" style="margin-bottom:14px;">Mark yourself present once you've joined today's batch.</p>
+           <button class="btn btn-accent" id="mark-present-btn">Mark present for today</button>`}
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>History</h3><div class="field-hint">${mine.length} of ${distinctDates.length} classes held</div></div>
+      ${distinctDates.length===0 ? `<div class="empty">No classes recorded yet.</div>` : `
+      <table><thead><tr><th>Date</th><th>Status</th></tr></thead><tbody>
+        ${distinctDates.map(d=>`<tr><td>${fmtDate(d)}</td><td>${mine.includes(d)?'<span class="badge badge-present">Present</span>':'<span class="badge badge-absent">Absent</span>'}</td></tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+function bindStudentContentEvents(){
+  document.querySelectorAll('[data-view]').forEach(b=>{ b.onclick = ()=>{ view=b.dataset.view; render(); }; });
+  document.querySelectorAll('[data-start]').forEach(b=>{
+    b.onclick = ()=>{ examTakeId=b.dataset.start; view='examTake'; render(); };
+  });
+  const mpb = document.getElementById('mark-present-btn');
+  if(mpb) mpb.onclick = async ()=>{
+    mpb.disabled = true; mpb.textContent='Marking...';
+    await setJSON(KP.att+todayISO()+':'+session.username, { present:true, time:new Date().toISOString() });
+    toast('Marked present for today.', 'success');
+    render();
+  };
+
+  const etf = document.getElementById('exam-take-form');
+  if(etf){
+    const totalQ = parseInt(etf.dataset.total,10) || 0;
+    const updateProgress = ()=>{
+      const answered = new Set();
+      etf.querySelectorAll('input[type=radio]:checked').forEach(r=>answered.add(r.name));
+      const n = answered.size;
+      const fill = document.getElementById('exam-progress-fill');
+      const label = document.getElementById('exam-progress-label');
+      if(fill) fill.style.width = (totalQ ? (100*n/totalQ) : 0)+'%';
+      if(label) label.textContent = n+' of '+totalQ+' answered';
+    };
+    etf.addEventListener('change', (e)=>{
+      if(e.target.matches('input[type=radio]')){
+        etf.querySelectorAll(`input[name="${e.target.name}"]`).forEach(r=>{
+          const opt = r.closest('.exam-opt'); if(opt) opt.classList.toggle('is-selected', r.checked);
+        });
+        updateProgress();
+      }
+    });
+    updateProgress();
+
+    etf.onsubmit = async (e)=>{
+      e.preventDefault();
+      const ok = await showConfirm('Submit this exam?', 'You can only submit once — this locks in your answers.', 'Submit exam');
+      if(!ok) return;
+      const ex = await getJSON(KP.exam+examTakeId);
+      const answers = {};
+      let score = 0;
+      ex.questions.forEach((q,i)=>{
+        const sel = etf.querySelector(`input[name="q${i}"]:checked`);
+        const val = sel ? parseInt(sel.value,10) : null;
+        answers['q'+i] = val;
+        if(val===q.correct) score++;
+      });
+      const submission = { username:session.username, examId:examTakeId, answers, score, total:ex.questions.length, submittedAt:new Date().toISOString() };
+      await setJSON(KP.sub+examTakeId+':'+session.username, submission);
+      toast(`Submitted — you scored ${score}/${ex.questions.length}.`, 'success');
+      view='exam'; examTakeId=null; render();
+    };
+  }
+}
+
+/* ============================= TEACHER SHELL ============================= */
+async function renderTeacherShell(){
+  const navItems = [
+    {key:'publish', label:'Publish exam'},
+    {key:'results', label:'Results'},
+    {key:'attendance', label:'Attendance'},
+    {key:'payments', label:'Payments'},
+  ];
+  if(!view) view='publish';
+  window.scrollTo(0,0);
+  document.getElementById('app').innerHTML = shellFrame(navItems, view, `<div class="loading">Loading&hellip;</div>`);
+  bindShellNav();
+
+  let body = '';
+  if(view==='publish') body = teacherPublishHTML();
+  else if(view==='results') body = await teacherResultsHTML();
+  else if(view==='attendance') body = await teacherAttendanceHTML();
+  else if(view==='payments') body = await teacherPaymentsHTML();
+
+  const contentEl = document.getElementById('content');
+  contentEl.innerHTML = body;
+  bindTeacherContentEvents();
+  animateCountUps(contentEl);
+}
+
+function teacherPublishHTML(){
+  const qhtml = draftQuestions.map((q,qi)=>`
+    <div class="question-block" data-qi="${qi}">
+      <div class="qnum">QUESTION ${qi+1}</div>
+      <div class="field"><textarea class="q-text" rows="2" data-qi="${qi}" placeholder="Question text">${esc(q.text)}</textarea></div>
+      ${q.options.map((op,oi)=>`
+        <div class="opt-row">
+          <span class="opt-label">${String.fromCharCode(65+oi)}</span>
+          <input type="text" class="q-opt" data-qi="${qi}" data-oi="${oi}" value="${esc(op)}" placeholder="Option ${String.fromCharCode(65+oi)}">
+          <input type="radio" class="q-correct" name="correct-${qi}" data-qi="${qi}" value="${oi}" ${q.correct===oi?'checked':''} title="Correct answer">
+        </div>`).join('')}
+      ${draftQuestions.length>1?`<button type="button" class="btn btn-ghost btn-sm" data-remove-q="${qi}" style="margin-top:4px;">Remove question</button>`:''}
+    </div>`).join('');
+
+  return `
+    <div class="main-header"><div><div class="eyebrow">Publish</div><h2>New MCQ exam</h2></div></div>
+    <div class="card">
+      <div class="field-row">
+        <div class="field"><label>Exam title</label><input type="text" id="exam-title" placeholder="e.g. Organic Chemistry &ndash; Ch. 4"></div>
+        <div class="field"><label>Subject / topic (optional)</label><input type="text" id="exam-subject" placeholder="e.g. Hydrocarbons"></div>
+      </div>
+    </div>
+    <div id="questions-wrap">${qhtml}</div>
+    <button type="button" class="btn btn-ghost" id="add-question-btn" style="margin-bottom:20px;">+ Add question</button>
+    <div>
+      <button type="button" class="btn btn-accent" id="publish-exam-btn">Publish exam</button>
+    </div>
+    <div id="publish-error"></div>`;
+}
+
+async function teacherResultsHTML(){
+  const exams = await allExams();
+  if(exams.length===0) return `<div class="main-header"><div><div class="eyebrow">Results</div><h2>Exam results</h2></div></div><div class="card"><div class="empty">Publish an exam first to see results here.</div></div>`;
+  if(!resultsExamId) resultsExamId = exams[0].id;
+  const exam = exams.find(e=>e.id===resultsExamId) || exams[0];
+  const subs = await submissionsForExam(exam.id);
+  const students = await allStudents();
+  const nameOf = (u)=> (students.find(s=>s.username===u)||{}).name || u;
+
+  const optionsHTML = exams.map(e=>`<option value="${e.id}" ${e.id===exam.id?'selected':''}>${esc(e.title)}</option>`).join('');
+
+  if(subs.length===0){
+    return `
+    <div class="main-header"><div><div class="eyebrow">Results</div><h2>Exam results</h2></div></div>
+    <div class="card"><label style="font-size:12.5px;color:var(--ink-soft);">Exam</label><select id="results-exam-select" style="width:100%;margin-top:6px;padding:9px;border:1px solid var(--line);border-radius:3px;">${optionsHTML}</select></div>
+    <div class="card"><div class="empty">No submissions yet for this exam.</div></div>`;
+  }
+
+  const max = Math.max(...subs.map(s=>s.score));
+  const avg = (subs.reduce((a,s)=>a+s.score,0)/subs.length).toFixed(1);
+  const sorted = [...subs].sort((a,b)=>b.score-a.score);
+
+  // per-question wrong/skip analysis
+  const qStats = exam.questions.map((q,i)=>({ i, text:q.text, wrong:0, skipped:0 }));
+  subs.forEach(s=>{
+    exam.questions.forEach((q,i)=>{
+      const val = s.answers ? s.answers['q'+i] : undefined;
+      if(val===null || val===undefined) qStats[i].skipped++;
+      else if(val!==q.correct) qStats[i].wrong++;
+    });
+  });
+  const topIssues = [...qStats].sort((a,b)=>(b.wrong+b.skipped)-(a.wrong+a.skipped)).slice(0,5);
+
+  return `
+    <div class="main-header"><div><div class="eyebrow">Results</div><h2>Exam results</h2></div></div>
+    <div class="card"><label style="font-size:12.5px;color:var(--ink-soft);">Exam</label><select id="results-exam-select" style="width:100%;margin-top:6px;padding:9px;border:1px solid var(--line);border-radius:3px;">${optionsHTML}</select></div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Submissions</div><div class="value" data-countup="${subs.length}">0</div><div class="sub">of ${students.length} students</div></div>
+      <div class="stat-card"><div class="label">Highest mark</div><div class="value"><span data-countup="${max}">0</span> / ${exam.questions.length}</div></div>
+      <div class="stat-card"><div class="label">Average mark</div><div class="value">${avg}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>Scoreboard</h3></div>
+      <table><thead><tr><th>Student</th><th>Score</th><th>Submitted</th></tr></thead><tbody>
+        ${sorted.map(s=>`<tr class="${s.score===max?'top-row':''}"><td>${esc(nameOf(s.username))} ${s.score===max?'<span class="badge badge-top">Top</span>':''}</td><td class="mono">${s.score} / ${s.total}</td><td>${fmtWhen(s.submittedAt)}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>Most commonly missed</h3></div>
+      <table><thead><tr><th>Question</th><th>Wrong</th><th>Skipped</th></tr></thead><tbody>
+        ${topIssues.map(q=>`<tr><td>Q${q.i+1}. ${esc(q.text.length>60?q.text.slice(0,60)+'&hellip;':q.text)}</td><td class="mono">${q.wrong}</td><td class="mono">${q.skipped}</td></tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+async function teacherAttendanceHTML(){
+  const [students, allAtt] = await Promise.all([ allStudents(), allAttendanceRecords() ]);
+  const distinctDates = [...new Set(allAtt.map(r=>r.date))];
+  const totalHeld = distinctDates.length;
+  const presentToday = new Set(allAtt.filter(r=>r.date===attDate && r.present).map(r=>r.username));
+
+  const attendedCount = {};
+  students.forEach(s=>attendedCount[s.username]=0);
+  allAtt.forEach(r=>{ if(r.present && attendedCount[r.username]!==undefined) attendedCount[r.username]++; });
+
+  return `
+    <div class="main-header"><div><div class="eyebrow">Attendance</div><h2>Class register</h2></div></div>
+    <div class="card">
+      <div class="field-row" style="align-items:flex-end;">
+        <div class="field" style="max-width:220px;"><label>Date</label><input type="date" id="att-date-input" value="${attDate}"></div>
+        <div class="field-hint" style="padding-bottom:10px;">${presentToday.size} of ${students.length} present</div>
+      </div>
+      ${students.length===0 ? `<div class="empty">No students have signed up yet.</div>` : `
+      <table><thead><tr><th>Student</th><th>Batch</th><th>Status</th></tr></thead><tbody>
+        ${students.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.batch||'&mdash;')}</td><td>${presentToday.has(s.username)?'<span class="badge badge-present">Present</span>':'<span class="badge badge-absent">Absent</span>'}</td></tr>`).join('')}
+      </tbody></table>`}
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>Classes completed</h3><div class="field-hint">${totalHeld} classes held in total</div></div>
+      ${students.length===0 ? `<div class="empty">Nothing to show yet.</div>` : `
+      <table><thead><tr><th>Student</th><th>Attended</th></tr></thead><tbody>
+        ${students.map(s=>`<tr><td>${esc(s.name)}</td><td class="mono">${attendedCount[s.username]} / ${totalHeld}</td></tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+async function teacherPaymentsHTML(){
+  const students = await allStudents();
+  const payments = {};
+  for(const s of students){ payments[s.username] = await getJSON(KP.pay+s.username); }
+  return `
+    <div class="main-header"><div><div class="eyebrow">Payments</div><h2>Fee status</h2></div></div>
+    <div class="card">
+      ${students.length===0 ? `<div class="empty">No students have signed up yet.</div>` : `
+      <table><thead><tr><th>Student</th><th>Batch</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody>
+        ${students.map(s=>{
+          const p = payments[s.username];
+          const paid = p && p.paid;
+          return `<tr>
+            <td>${esc(s.name)}</td><td>${esc(s.batch||'&mdash;')}</td>
+            <td><span class="badge ${paid?'badge-paid':'badge-due'}">${paid?'Paid':'Due'}</span></td>
+            <td class="field-hint">${p&&p.updatedAt?fmtWhen(p.updatedAt):'&mdash;'}</td>
+            <td><button class="btn btn-ghost btn-sm" data-toggle-pay="${s.username}" data-current="${paid?1:0}">${paid?'Mark due':'Mark paid'}</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+function syncDraftFromDOM(){
+  document.querySelectorAll('.q-text').forEach(el=>{ draftQuestions[+el.dataset.qi].text = el.value; });
+  document.querySelectorAll('.q-opt').forEach(el=>{ draftQuestions[+el.dataset.qi].options[+el.dataset.oi] = el.value; });
+  document.querySelectorAll('.q-correct:checked').forEach(el=>{ draftQuestions[+el.dataset.qi].correct = +el.value; });
+}
+
+function bindTeacherContentEvents(){
+  document.querySelectorAll('[data-view]').forEach(b=>{ b.onclick = ()=>{ view=b.dataset.view; render(); }; });
+
+  // publish exam view
+  const addQBtn = document.getElementById('add-question-btn');
+  if(addQBtn) addQBtn.onclick = ()=>{ syncDraftFromDOM(); draftQuestions.push(blankQuestion()); render(); };
+
+  document.querySelectorAll('[data-remove-q]').forEach(b=>{
+    b.onclick = ()=>{ syncDraftFromDOM(); draftQuestions.splice(+b.dataset.removeQ,1); render(); };
+  });
+
+  const pubBtn = document.getElementById('publish-exam-btn');
+  if(pubBtn) pubBtn.onclick = async ()=>{
+    syncDraftFromDOM();
+    const title = document.getElementById('exam-title').value.trim();
+    const subject = document.getElementById('exam-subject').value.trim();
+    const errBox = document.getElementById('publish-error');
+    if(!title){ errBox.innerHTML = `<div class="error-box">Give the exam a title.</div>`; return; }
+    for(const q of draftQuestions){
+      if(!q.text.trim() || q.options.some(o=>!o.trim())){
+        errBox.innerHTML = `<div class="error-box">Every question needs its text and all four options filled in.</div>`; return;
+      }
+    }
+    const id = 'exam_'+Date.now();
+    const exam = { id, title, subject, questions: draftQuestions.map(q=>({text:q.text.trim(), options:q.options.map(o=>o.trim()), correct:q.correct})), createdAt:new Date().toISOString(), publishedBy:session.username };
+    await setJSON(KP.exam+id, exam);
+    draftQuestions = [ blankQuestion() ];
+    resultsExamId = id;
+    view='results';
+    toast('Exam published — students can see it now.', 'success');
+    render();
+  };
+
+  // results view
+  const resSel = document.getElementById('results-exam-select');
+  if(resSel) resSel.onchange = ()=>{ resultsExamId = resSel.value; render(); };
+
+  // attendance view
+  const dateInput = document.getElementById('att-date-input');
+  if(dateInput) dateInput.onchange = ()=>{ attDate = dateInput.value; render(); };
+
+  // payments view
+  document.querySelectorAll('[data-toggle-pay]').forEach(b=>{
+    b.onclick = async ()=>{
+      const username = b.dataset.togglePay;
+      const nowPaid = b.dataset.current==='1';
+      await setJSON(KP.pay+username, { paid: !nowPaid, updatedAt:new Date().toISOString() });
+      toast(nowPaid ? 'Marked as due.' : 'Marked as paid.', 'success');
+      render();
+    };
+  });
+}
+
+/* ============================= INIT ============================= */
+(async function init(){
+  document.getElementById('app').innerHTML = `<div class="loading">Loading Chemorbit&hellip;</div>`;
+  await probeStorage();
+  await bootstrapTeacher();
+  render();
+})();
+</script>
+</body>
+</html>
