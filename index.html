@@ -23,6 +23,10 @@
     --brass-bg:#F3EAE0;
     --radius:3px;
     --shadow:0 1px 2px rgba(30,42,34,0.06), 0 4px 14px rgba(30,42,34,0.05);
+    --flame:#D97D45;
+    --glass-hi:rgba(255,255,255,0.65);
+    --bond-line:rgba(166,118,74,0.4);
+    --molecule-line:rgba(63,107,74,0.16);
   }
   *{box-sizing:border-box;}
   html{ scroll-behavior:smooth; }
@@ -37,6 +41,22 @@
     -webkit-font-smoothing:antialiased;
     -webkit-tap-highlight-color:transparent;
   }
+  #app{ position:relative; z-index:1; }
+
+  /* ---- Molecule field: a quiet drift of atoms across every screen, like a ----
+     ---- classroom chalkboard that never quite stops moving ---- */
+  .molecule-field{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  .molecule-field .mol{ position:absolute; opacity:0.5; animation:molDrift linear infinite; will-change:transform; }
+  .molecule-field .mol svg{ display:block; }
+  .molecule-field .mol .bond{ stroke:var(--molecule-line); stroke-width:1.3; }
+  .molecule-field .mol .atom{ fill:var(--molecule-line); }
+  @keyframes molDrift{
+    0%{ transform:translate(0,0) rotate(0deg); }
+    50%{ transform:translate(14px,-18px) rotate(8deg); }
+    100%{ transform:translate(0,0) rotate(0deg); }
+  }
+  @media (prefers-reduced-motion: reduce){ .molecule-field .mol{ animation:none !important; } }
+  @media (max-width:800px){ .molecule-field .mol{ opacity:0.34; } }
   *:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   h1,h2,h3,h4{
     font-family:'Spectral', Georgia, serif;
@@ -209,11 +229,23 @@
   .sidebar-user{ margin:22px 0 24px; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.14); }
   .sidebar-user .name{ font-family:'Spectral', serif; font-weight:600; font-size:15px; color:#fff; }
   .sidebar-user .role{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; color:#B9C4BB; margin-top:2px; }
-  .nav-item{
-    display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:none; border:none;
-    color:#CDD5CB; padding:10px 10px; border-radius:var(--radius); font-size:13.5px; margin-bottom:2px;
+  .sidebar-nav{ position:relative; }
+  .sidebar-nav::before{
+    content:''; position:absolute; left:19px; top:8px; bottom:8px; width:1.5px;
+    background:repeating-linear-gradient(180deg, var(--bond-line) 0 4px, transparent 4px 9px);
+    z-index:0;
   }
-  .nav-icon{ display:flex; width:18px; height:18px; flex-shrink:0; }
+  .nav-item{
+    position:relative; display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:none; border:none;
+    color:#CDD5CB; padding:10px 10px; border-radius:var(--radius); font-size:13.5px; margin-bottom:2px;
+    z-index:1;
+  }
+  .nav-item::before{
+    content:''; position:absolute; left:9px; top:50%; width:5px; height:5px; border-radius:50%;
+    background:var(--bond-line); transform:translate(-50%,-50%); transition:background .15s ease, box-shadow .15s ease;
+  }
+  .nav-item.active::before{ background:var(--brass); box-shadow:0 0 0 3px rgba(166,118,74,0.22); }
+  .nav-icon{ display:flex; width:18px; height:18px; flex-shrink:0; margin-left:14px; }
   .nav-icon svg{ width:100%; height:100%; }
   .nav-item:hover{ background:rgba(255,255,255,0.06); color:#fff; }
   .nav-item.active{ background:rgba(255,255,255,0.1); color:#fff; }
@@ -243,24 +275,24 @@
     /* bottom app-bar: relative positioning so the sliding indicator can be absolute inside it */
     .mobile-tabs{
       display:flex; position:fixed; left:0; right:0; bottom:0; z-index:20;
-      background:var(--panel); border-top:1px solid var(--line);
+      background:var(--ink); border-top:1px solid rgba(255,255,255,0.1);
       padding:6px 4px calc(6px + env(safe-area-inset-bottom));
-      box-shadow:0 -2px 14px rgba(30,42,34,0.07);
+      box-shadow:0 -6px 20px rgba(14,26,19,0.28);
     }
     .mobile-tabs button{
       position:relative; flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
       background:none; border:none; padding:6px 2px; border-radius:8px;
-      font-size:10.5px; color:var(--ink-soft); transition:color .15s ease;
+      font-size:10.5px; color:#9AA79D; transition:color .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
     .mobile-tabs button .nav-icon{ width:20px; height:20px; transition:transform .28s cubic-bezier(.34,1.56,.64,1); }
-    .mobile-tabs button.active{ color:var(--accent-dark); }
+    .mobile-tabs button.active{ color:var(--hero-electron); }
     .mobile-tabs button.active .nav-icon{ transform:translateY(-1px) scale(1.08); }
     .mobile-tabs button.just-tapped .nav-icon{ animation:tabBounce .38s cubic-bezier(.34,1.56,.64,1); }
     @keyframes tabBounce{ 0%{ transform:scale(1); } 35%{ transform:scale(0.78); } 100%{ transform:scale(1.08) translateY(-1px); } }
     .tab-indicator{
       position:absolute; top:2px; height:calc(100% - 4px); border-radius:10px;
-      background:var(--success-bg); z-index:-1;
+      background:rgba(231,184,118,0.14); z-index:-1;
       transition:transform .32s cubic-bezier(.34,1.2,.4,1), width .32s cubic-bezier(.34,1.2,.4,1);
       pointer-events:none;
     }
@@ -307,15 +339,39 @@
     tbody tr{ transition:background .12s ease; }
     tbody tr:hover td{ background:#FAFAF6; }
   }
-  .btn{ transition:opacity .15s ease, transform .08s ease, box-shadow .15s ease; }
+  .btn{ position:relative; overflow:visible; transition:opacity .15s ease, transform .08s ease, box-shadow .15s ease; }
   .btn:active{ transform:translateY(1px); }
+  .fizz-spark{
+    position:fixed; width:5px; height:5px; border-radius:50%; background:var(--hero-electron);
+    pointer-events:none; z-index:400; animation:fizzPop .5s ease-out forwards;
+  }
+  @keyframes fizzPop{
+    0%{ transform:translate(0,0) scale(1); opacity:1; }
+    100%{ transform:translate(var(--fx), var(--fy)) scale(0.3); opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){ .fizz-spark{ display:none; } }
 
-  /* ---- Cards / tables / badges ---- */
-  .card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px 24px; margin-bottom:18px; box-shadow:var(--shadow); }
-  .card-title{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  /* ---- Cards / tables / badges: glassware on the lab bench ---- */
+  .card{
+    position:relative; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 24px; margin-bottom:18px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background:linear-gradient(90deg, var(--accent) 0%, var(--brass) 100%); opacity:0.75;
+  }
+  .card::after{
+    content:''; position:absolute; top:3px; left:0; right:0; height:34px;
+    background:linear-gradient(180deg, var(--glass-hi) 0%, rgba(255,255,255,0) 100%); opacity:0.35; pointer-events:none;
+  }
+  .card-title{ position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:22px; }
-  .stat-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
-  .stat-card .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:8px; }
+  .stat-card{
+    position:relative; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px 16px 22px; overflow:hidden;
+  }
+  .stat-card::before{ content:''; position:absolute; top:0; bottom:0; left:0; width:4px; background:var(--brass); opacity:0.7; }
+  .stat-card .label{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:8px; }
   .stat-card .value{ font-family:'Spectral', serif; font-size:26px; font-weight:600; }
   .stat-card .sub{ font-size:12px; color:var(--ink-soft); margin-top:3px; }
 
@@ -325,7 +381,8 @@
   tr:last-child td{ border-bottom:none; }
   tr.top-row td{ background:var(--brass-bg); }
 
-  .badge{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:600; letter-spacing:0.02em; }
+  .badge{ display:inline-flex; align-items:center; gap:4px; padding:3px 10px 3px 8px; border-radius:20px; font-size:11.5px; font-weight:600; letter-spacing:0.02em; }
+  .badge::before{ content:''; width:5px; height:5px; border-radius:50%; background:currentColor; opacity:0.85; flex-shrink:0; }
   .badge-present{ background:var(--success-bg); color:var(--accent-dark); }
   .badge-absent{ background:var(--danger-bg); color:var(--danger); }
   .badge-paid{ background:var(--success-bg); color:var(--accent-dark); }
@@ -360,6 +417,13 @@
   .loading{ padding:4px 0; }
   .skeleton-row{ height:52px; border-radius:var(--radius); margin-bottom:12px; background:linear-gradient(100deg, #EDEBE1 30%, #F7F5EC 45%, #EDEBE1 60%); background-size:220% 100%; animation:shimmer 1.3s ease-in-out infinite; }
   .skeleton-row:nth-child(2){ width:88%; } .skeleton-row:nth-child(3){ width:72%; }
+  .flask-loader{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:38px 0; gap:12px; }
+  .flask-loader .flask-liquid{ animation:flaskWobble 2.2s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+  .flask-loader .flask-bubble{ animation-name:flaskBubble; animation-timing-function:ease-in; animation-iteration-count:infinite; }
+  @keyframes flaskWobble{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(2.5deg); } }
+  @keyframes flaskBubble{ 0%{ transform:translateY(0); opacity:0; } 20%{ opacity:.9; } 100%{ transform:translateY(-22px); opacity:0; } }
+  .flask-loader .flask-label{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-soft); letter-spacing:.04em; }
+  @media (prefers-reduced-motion: reduce){ .flask-loader .flask-liquid, .flask-loader .flask-bubble{ animation:none !important; } }
   @keyframes shimmer{ 0%{ background-position:120% 0; } 100%{ background-position:-20% 0; } }
 
   /* ---- Content transition ---- */
@@ -388,6 +452,7 @@
 </style>
 </head>
 <body>
+<div class="molecule-field" aria-hidden="true" id="molecule-field"></div>
 <div id="app"></div>
 
 <script>
@@ -618,6 +683,33 @@ function heroAtomSVG(){
     <circle class="nucleus" cx="150" cy="150" r="12" fill="#8FC79B"/>
   </svg>`;
 }
+/* Scatters a handful of small molecule clusters across the viewport, once.
+   Each is a tiny cluster of 2-4 bonded atoms, sized/rotated/timed differently
+   so the drift never looks synchronized. Pure decoration, never re-rendered. */
+function initMoleculeField(){
+  const field = document.getElementById('molecule-field');
+  if(!field) return;
+  const shapes = [
+    `<svg width="46" height="34" viewBox="0 0 46 34"><line class="bond" x1="8" y1="17" x2="30" y2="8"/><line class="bond" x1="8" y1="17" x2="30" y2="26"/><circle class="atom" cx="8" cy="17" r="4"/><circle class="atom" cx="30" cy="8" r="3"/><circle class="atom" cx="30" cy="26" r="3"/></svg>`,
+    `<svg width="30" height="30" viewBox="0 0 30 30"><line class="bond" x1="7" y1="15" x2="23" y2="15"/><circle class="atom" cx="7" cy="15" r="3.4"/><circle class="atom" cx="23" cy="15" r="3.4"/></svg>`,
+    `<svg width="52" height="40" viewBox="0 0 52 40"><line class="bond" x1="10" y1="20" x2="26" y2="8"/><line class="bond" x1="10" y1="20" x2="26" y2="32"/><line class="bond" x1="26" y1="8" x2="42" y2="16"/><circle class="atom" cx="10" cy="20" r="4.4"/><circle class="atom" cx="26" cy="8" r="3"/><circle class="atom" cx="26" cy="32" r="3"/><circle class="atom" cx="42" cy="16" r="2.6"/></svg>`,
+    `<svg width="22" height="22" viewBox="0 0 22 22"><circle class="atom" cx="11" cy="11" r="4"/></svg>`,
+  ];
+  const positions = [
+    {top:'8%', left:'6%'}, {top:'18%', left:'82%'}, {top:'42%', left:'12%'},
+    {top:'62%', left:'88%'}, {top:'78%', left:'20%'}, {top:'30%', left:'48%'},
+    {top:'88%', left:'55%'}, {top:'5%', left:'55%'}, {top:'55%', left:'68%'},
+  ];
+  let html = '';
+  positions.forEach((pos, i)=>{
+    const shape = shapes[i % shapes.length];
+    const dur = 16 + (i*5 % 14);
+    const delay = -(i*3 % 12);
+    html += `<span class="mol" style="top:${pos.top}; left:${pos.left}; animation-duration:${dur}s; animation-delay:${delay}s;">${shape}</span>`;
+  });
+  field.innerHTML = html;
+}
+
 function bubblesHTML(count){
   let out = '';
   for(let i=0;i<count;i++){
@@ -900,7 +992,7 @@ async function renderStudentShell(){
   currentNavOrder = navItems.map(n=>n.key);
   if(!view) view='dashboard';
   window.scrollTo(0,0);
-  document.getElementById('app').innerHTML = shellFrame(navItems, view.startsWith('examTake')?'exam':view, `<div class="loading"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`);
+  document.getElementById('app').innerHTML = shellFrame(navItems, view.startsWith('examTake')?'exam':view, `<div class="loading flask-loader"><svg width="52" height="60" viewBox="0 0 52 60" fill="none"><path d="M21 4h10v14l12 28a4 4 0 0 1-3.7 5.6H12.7A4 4 0 0 1 9 46l12-28V4z" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/><path class="flask-liquid" d="M13.5 38.5h25L42 46a4 4 0 0 1-3.7 5.6H13.7A4 4 0 0 1 10 46l3.5-7.5z" fill="var(--success-bg)"/><circle class="flask-bubble" cx="22" cy="42" r="1.6" fill="var(--accent)" style="animation-duration:1.6s;"/><circle class="flask-bubble" cx="27" cy="45" r="1.2" fill="var(--accent)" style="animation-duration:1.9s; animation-delay:-.6s;"/><circle class="flask-bubble" cx="31" cy="42" r="1.4" fill="var(--accent)" style="animation-duration:1.4s; animation-delay:-1s;"/></svg><span class="flask-label">Mixing your data&hellip;</span></div>`);
   bindShellNav();
 
   let body = '';
@@ -1104,7 +1196,7 @@ async function renderTeacherShell(){
   currentNavOrder = navItems.map(n=>n.key);
   if(!view) view='publish';
   window.scrollTo(0,0);
-  document.getElementById('app').innerHTML = shellFrame(navItems, view, `<div class="loading"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`);
+  document.getElementById('app').innerHTML = shellFrame(navItems, view, `<div class="loading flask-loader"><svg width="52" height="60" viewBox="0 0 52 60" fill="none"><path d="M21 4h10v14l12 28a4 4 0 0 1-3.7 5.6H12.7A4 4 0 0 1 9 46l12-28V4z" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/><path class="flask-liquid" d="M13.5 38.5h25L42 46a4 4 0 0 1-3.7 5.6H13.7A4 4 0 0 1 10 46l3.5-7.5z" fill="var(--success-bg)"/><circle class="flask-bubble" cx="22" cy="42" r="1.6" fill="var(--accent)" style="animation-duration:1.6s;"/><circle class="flask-bubble" cx="27" cy="45" r="1.2" fill="var(--accent)" style="animation-duration:1.9s; animation-delay:-.6s;"/><circle class="flask-bubble" cx="31" cy="42" r="1.4" fill="var(--accent)" style="animation-duration:1.4s; animation-delay:-1s;"/></svg><span class="flask-label">Mixing your data&hellip;</span></div>`);
   bindShellNav();
 
   let body = '';
@@ -1336,6 +1428,29 @@ const exam = {
 }
 
 /* ============================= INIT ============================= */
+/* A tiny reaction-fizz whenever a primary control is tapped — a handful of
+   brass sparks radiating from the tap point, purely decorative, attached
+   once via delegation so no existing button markup or handler changes. */
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.btn, .mobile-tabs button, .exam-opt');
+  if(!btn) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const rect = btn.getBoundingClientRect();
+  const x = e.clientX || (rect.left+rect.width/2), y = e.clientY || (rect.top+rect.height/2);
+  const n = 5;
+  for(let i=0;i<n;i++){
+    const spark = document.createElement('span');
+    spark.className = 'fizz-spark';
+    const angle = (Math.PI*2*i/n) + Math.random()*0.6;
+    const dist = 18 + Math.random()*16;
+    spark.style.setProperty('--fx', (Math.cos(angle)*dist)+'px');
+    spark.style.setProperty('--fy', (Math.sin(angle)*dist)+'px');
+    spark.style.left = x+'px'; spark.style.top = y+'px';
+    document.body.appendChild(spark);
+    setTimeout(()=> spark.remove(), 520);
+  }
+}, true);
+
 (function setupMobileSwipeNav(){
   let touchStartX=0, touchStartY=0, touchStartTime=0, swiping=false;
   document.addEventListener('touchstart', (e)=>{
@@ -1359,7 +1474,8 @@ const exam = {
 window.addEventListener('resize', ()=>{ lastTabIndicatorRect=null; positionTabIndicator(); });
 
 (async function init(){
-  document.getElementById('app').innerHTML = `<div class="loading">Loading Chemorbit&hellip;</div>`;
+  initMoleculeField();
+  document.getElementById('app').innerHTML = `<div class="loading flask-loader" style="padding-top:22vh;"><svg width="52" height="60" viewBox="0 0 52 60" fill="none"><path d="M21 4h10v14l12 28a4 4 0 0 1-3.7 5.6H12.7A4 4 0 0 1 9 46l12-28V4z" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/><path class="flask-liquid" d="M13.5 38.5h25L42 46a4 4 0 0 1-3.7 5.6H13.7A4 4 0 0 1 10 46l3.5-7.5z" fill="var(--success-bg)"/><circle class="flask-bubble" cx="22" cy="42" r="1.6" fill="var(--accent)" style="animation-duration:1.6s;"/><circle class="flask-bubble" cx="27" cy="45" r="1.2" fill="var(--accent)" style="animation-duration:1.9s; animation-delay:-.6s;"/><circle class="flask-bubble" cx="31" cy="42" r="1.4" fill="var(--accent)" style="animation-duration:1.4s; animation-delay:-1s;"/></svg><span class="flask-label">Loading Chemorbit&hellip;</span></div>`;
   await bootstrapTeacher();
   render();
 })();
